@@ -7,10 +7,10 @@ import (
 )
 
 func main() {
-	var stdoutBuff bytes.Buffer         // <1>
-	defer stdoutBuff.WriteTo(os.Stdout) // <2>
+	var stdoutBuff bytes.Buffer
+	defer stdoutBuff.WriteTo(os.Stdout)
 
-	intStream := make(chan int, 4) // <3>
+	intStream := make(chan int, 4)
 	go func() {
 		defer close(intStream)
 		defer fmt.Fprintln(&stdoutBuff, "Producer Done.")

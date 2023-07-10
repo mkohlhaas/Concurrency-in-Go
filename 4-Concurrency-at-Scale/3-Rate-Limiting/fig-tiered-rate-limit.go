@@ -47,7 +47,7 @@ func Per(eventCount int, duration time.Duration) rate.Limit {
 	return rate.Every(duration / time.Duration(eventCount))
 }
 
-type RateLimiter interface { // <1>
+type RateLimiter interface {
 	Wait(context.Context) error
 	Limit() rate.Limit
 }
@@ -56,7 +56,7 @@ func MultiLimiter(limiters ...RateLimiter) *multiLimiter {
 	byLimit := func(i, j int) bool {
 		return limiters[i].Limit() < limiters[j].Limit()
 	}
-	sort.Slice(limiters, byLimit) // <2>
+	sort.Slice(limiters, byLimit)
 	return &multiLimiter{limiters: limiters}
 }
 
@@ -74,5 +74,5 @@ func (l *multiLimiter) Wait(ctx context.Context) error {
 }
 
 func (l *multiLimiter) Limit() rate.Limit {
-	return l.limiters[0].Limit() // <3>
+	return l.limiters[0].Limit()
 }

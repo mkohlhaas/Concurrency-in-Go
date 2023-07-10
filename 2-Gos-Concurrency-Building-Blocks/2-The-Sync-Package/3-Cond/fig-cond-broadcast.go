@@ -6,12 +6,12 @@ import (
 )
 
 func main() {
-	type Button struct { // <1>
+	type Button struct {
 		Clicked *sync.Cond
 	}
 	button := Button{Clicked: sync.NewCond(&sync.Mutex{})}
 
-	subscribe := func(c *sync.Cond, fn func()) { // <2>
+	subscribe := func(c *sync.Cond, fn func()) {
 		var goroutineRunning sync.WaitGroup
 		goroutineRunning.Add(1)
 		go func() {
@@ -24,22 +24,22 @@ func main() {
 		goroutineRunning.Wait()
 	}
 
-	var clickRegistered sync.WaitGroup // <3>
+	var clickRegistered sync.WaitGroup
 	clickRegistered.Add(3)
-	subscribe(button.Clicked, func() { // <4>
+	subscribe(button.Clicked, func() {
 		fmt.Println("Maximizing window.")
 		clickRegistered.Done()
 	})
-	subscribe(button.Clicked, func() { // <5>
+	subscribe(button.Clicked, func() {
 		fmt.Println("Displaying annoying dialogue box!")
 		clickRegistered.Done()
 	})
-	subscribe(button.Clicked, func() { // <6>
+	subscribe(button.Clicked, func() {
 		fmt.Println("Mouse clicked.")
 		clickRegistered.Done()
 	})
 
-	button.Clicked.Broadcast() // <7>
+	button.Clicked.Broadcast()
 
 	clickRegistered.Wait()
 }

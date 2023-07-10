@@ -16,7 +16,7 @@ func main() {
 			for _, url := range urls {
 				resp, err := http.Get(url)
 				if err != nil {
-					fmt.Println(err) // <1>
+					fmt.Println(err)
 					continue
 				}
 				select {

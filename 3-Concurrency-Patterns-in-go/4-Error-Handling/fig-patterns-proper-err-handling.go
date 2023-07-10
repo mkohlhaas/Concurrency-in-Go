@@ -6,11 +6,11 @@ import (
 )
 
 func main() {
-	type Result struct { // <1>
+	type Result struct {
 		Error    error
 		Response *http.Response
 	}
-	checkStatus := func(done <-chan interface{}, urls ...string) <-chan Result { // <2>
+	checkStatus := func(done <-chan interface{}, urls ...string) <-chan Result {
 		results := make(chan Result)
 		go func() {
 			defer close(results)
@@ -18,11 +18,11 @@ func main() {
 			for _, url := range urls {
 				var result Result
 				resp, err := http.Get(url)
-				result = Result{Error: err, Response: resp} // <3>
+				result = Result{Error: err, Response: resp}
 				select {
 				case <-done:
 					return
-				case results <- result: // <4>
+				case results <- result:
 				}
 			}
 		}()
@@ -34,7 +34,7 @@ func main() {
 
 	urls := []string{"https://www.google.com", "https://badhost"}
 	for result := range checkStatus(done, urls...) {
-		if result.Error != nil { // <5>
+		if result.Error != nil {
 			fmt.Printf("error: %v", result.Error)
 			continue
 		}

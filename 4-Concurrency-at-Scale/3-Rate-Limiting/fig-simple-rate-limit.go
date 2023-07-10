@@ -43,7 +43,7 @@ func main() {
 }
 func Open() *APIConnection {
 	return &APIConnection{
-		rateLimiter: rate.NewLimiter(rate.Limit(1), 1), // <1>
+		rateLimiter: rate.NewLimiter(rate.Limit(1), 1),
 	}
 }
 
@@ -52,7 +52,7 @@ type APIConnection struct {
 }
 
 func (a *APIConnection) ReadFile(ctx context.Context) error {
-	if err := a.rateLimiter.Wait(ctx); err != nil { // <2>
+	if err := a.rateLimiter.Wait(ctx); err != nil {
 		return err
 	}
 	// Pretend we do work here
@@ -60,7 +60,7 @@ func (a *APIConnection) ReadFile(ctx context.Context) error {
 }
 
 func (a *APIConnection) ResolveAddress(ctx context.Context) error {
-	if err := a.rateLimiter.Wait(ctx); err != nil { // <2>
+	if err := a.rateLimiter.Wait(ctx); err != nil {
 		return err
 	}
 	// Pretend we do work here

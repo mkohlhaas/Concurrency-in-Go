@@ -15,7 +15,7 @@ func DoWork(
 		defer close(heartbeat)
 		defer close(intStream)
 
-		time.Sleep(2 * time.Second) // <1>
+		time.Sleep(2 * time.Second)
 
 		for _, n := range nums {
 			select {
@@ -41,7 +41,7 @@ func TestDoWork_GeneratesAllNumbers(t *testing.T) {
 	intSlice := []int{0, 1, 2, 3, 5}
 	heartbeat, results := DoWork(done, intSlice...)
 
-	<-heartbeat // <1>
+	<-heartbeat
 
 	i := 0
 	for r := range results {

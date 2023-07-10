@@ -7,13 +7,13 @@ import (
 func main() {
 	intStream := make(chan int)
 	go func() {
-		defer close(intStream) // <1>
+		defer close(intStream)
 		for i := 1; i <= 5; i++ {
 			intStream <- i
 		}
 	}()
 
-	for integer := range intStream { // <2>
+	for integer := range intStream {
 		fmt.Printf("%v ", integer)
 	}
 }

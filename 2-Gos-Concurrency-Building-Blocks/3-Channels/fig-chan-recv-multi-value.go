@@ -9,6 +9,6 @@ func main() {
 	go func() {
 		stringStream <- "Hello channels!"
 	}()
-	salutation, ok := <-stringStream // <1>
+	salutation, ok := <-stringStream
 	fmt.Printf("(%v): %v", ok, salutation)
 }

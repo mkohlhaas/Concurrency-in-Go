@@ -86,11 +86,11 @@ func main() {
 	fanIn := func(
 		done <-chan interface{},
 		channels ...<-chan interface{},
-	) <-chan interface{} { // <1>
-		var wg sync.WaitGroup // <2>
+	) <-chan interface{} {
+		var wg sync.WaitGroup
 		multiplexedStream := make(chan interface{})
 
-		multiplex := func(c <-chan interface{}) { // <3>
+		multiplex := func(c <-chan interface{}) {
 			defer wg.Done()
 			for i := range c {
 				select {
@@ -102,13 +102,13 @@ func main() {
 		}
 
 		// Select from all the channels
-		wg.Add(len(channels)) // <4>
+		wg.Add(len(channels))
 		for _, c := range channels {
 			go multiplex(c)
 		}
 
 		// Wait for all the reads to complete
-		go func() { // <5>
+		go func() {
 			wg.Wait()
 			close(multiplexedStream)
 		}()

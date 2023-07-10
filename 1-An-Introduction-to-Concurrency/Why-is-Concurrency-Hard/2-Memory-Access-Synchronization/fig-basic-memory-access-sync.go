@@ -6,19 +6,19 @@ import (
 )
 
 func main() {
-	var memoryAccess sync.Mutex // <1>
+	var memoryAccess sync.Mutex
 	var value int
 	go func() {
-		memoryAccess.Lock() // <2>
+		memoryAccess.Lock()
 		value++
-		memoryAccess.Unlock() // <3>
+		memoryAccess.Unlock()
 	}()
 
-	memoryAccess.Lock() // <4>
+	memoryAccess.Lock()
 	if value == 0 {
 		fmt.Printf("the value is %v.\n", value)
 	} else {
 		fmt.Printf("the value is %v.\n", value)
 	}
-	memoryAccess.Unlock() // <5>
+	memoryAccess.Unlock()
 }

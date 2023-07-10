@@ -25,20 +25,20 @@ func main() {
 	printSum := func(wg *sync.WaitGroup, id string, v1, v2 *value) {
 		defer wg.Done()
 		var sum int
-		for i := 0; ; i++ { // <4>
+		for i := 0; ; i++ {
 			if i >= 5 {
 				fmt.Println("canceling goroutine...")
 				return
 			}
 
 			fmt.Printf("%v: acquiring lock on %v\n", id, v1.id)
-			lock(v1) // <1>
+			lock(v1)
 
 			time.Sleep(2 * time.Second)
 
-			if v2.locked { // <2>
+			if v2.locked {
 				fmt.Printf("%v: releasing lock on %v\n", id, v1.id)
-				unlock(v1) // <3>
+				unlock(v1)
 				fmt.Printf("%v: %v locked, retrying\n", id, v2.id)
 				continue
 			}
@@ -61,7 +61,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go printSum(&wg, "first", &a, &b)
-	go printSum(&wg, "second", &a, &b) // <1>
+	go printSum(&wg, "second", &a, &b)
 
 	wg.Wait()
 }

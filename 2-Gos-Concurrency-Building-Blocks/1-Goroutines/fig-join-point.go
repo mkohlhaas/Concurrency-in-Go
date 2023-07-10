@@ -13,5 +13,5 @@ func main() {
 	}
 	wg.Add(1)
 	go sayHello()
-	wg.Wait() // <1>
+	wg.Wait()
 }

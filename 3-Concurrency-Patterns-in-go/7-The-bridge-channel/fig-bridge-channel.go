@@ -30,10 +30,10 @@ func main() {
 		done <-chan interface{},
 		chanStream <-chan <-chan interface{},
 	) <-chan interface{} {
-		valStream := make(chan interface{}) // <1>
+		valStream := make(chan interface{})
 		go func() {
 			defer close(valStream)
-			for { // <2>
+			for {
 				var stream <-chan interface{}
 				select {
 				case maybeStream, ok := <-chanStream:
@@ -44,7 +44,7 @@ func main() {
 				case <-done:
 					return
 				}
-				for val := range orDone(done, stream) { // <3>
+				for val := range orDone(done, stream) {
 					select {
 					case valStream <- val:
 					case <-done:

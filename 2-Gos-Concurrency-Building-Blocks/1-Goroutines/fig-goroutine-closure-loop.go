@@ -11,7 +11,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			fmt.Println(salutation) // <1>
+			fmt.Println(salutation)
 		}()
 	}
 	wg.Wait()

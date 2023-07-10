@@ -7,7 +7,7 @@ import (
 func main() {
 	stringStream := make(chan string)
 	go func() {
-		stringStream <- "Hello channels!" // <1>
+		stringStream <- "Hello channels!"
 	}()
-	fmt.Println(<-stringStream) // <2>
+	fmt.Println(<-stringStream)
 }

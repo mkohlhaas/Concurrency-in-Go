@@ -8,30 +8,30 @@ import (
 
 func main() {
 	var or func(channels ...<-chan interface{}) <-chan interface{}
-	or = func(channels ...<-chan interface{}) <-chan interface{} { // <1>
+	or = func(channels ...<-chan interface{}) <-chan interface{} {
 		switch len(channels) {
-		case 0: // <2>
+		case 0:
 			return nil
-		case 1: // <3>
+		case 1:
 			return channels[0]
 		}
 
 		orDone := make(chan interface{})
-		go func() { // <4>
+		go func() {
 			defer close(orDone)
 
 			switch len(channels) {
-			case 2: // <5>
+			case 2:
 				select {
 				case <-channels[0]:
 				case <-channels[1]:
 				}
-			default: // <6>
+			default:
 				select {
 				case <-channels[0]:
 				case <-channels[1]:
 				case <-channels[2]:
-				case <-or(append(channels[3:], orDone)...): // <6>
+				case <-or(append(channels[3:], orDone)...):
 				}
 			}
 		}()
@@ -40,12 +40,12 @@ func main() {
 	type startGoroutineFn func(
 		done <-chan interface{},
 		pulseInterval time.Duration,
-	) (heartbeat <-chan interface{}) // <1>
+	) (heartbeat <-chan interface{})
 
 	newSteward := func(
 		timeout time.Duration,
 		startGoroutine startGoroutineFn,
-	) startGoroutineFn { // <2>
+	) startGoroutineFn {
 		return func(
 			done <-chan interface{},
 			pulseInterval time.Duration,
@@ -56,9 +56,9 @@ func main() {
 
 				var wardDone chan interface{}
 				var wardHeartbeat <-chan interface{}
-				startWard := func() { // <3>
-					wardDone = make(chan interface{})                             // <4>
-					wardHeartbeat = startGoroutine(or(wardDone, done), timeout/2) // <5>
+				startWard := func() {
+					wardDone = make(chan interface{})
+					wardHeartbeat = startGoroutine(or(wardDone, done), timeout/2)
 				}
 				startWard()
 				pulse := time.Tick(pulseInterval)
@@ -67,16 +67,16 @@ func main() {
 				for {
 					timeoutSignal := time.After(timeout)
 
-					for { // <6>
+					for {
 						select {
 						case <-pulse:
 							select {
 							case heartbeat <- struct{}{}:
 							default:
 							}
-						case <-wardHeartbeat: // <7>
+						case <-wardHeartbeat:
 							continue monitorLoop
-						case <-timeoutSignal: // <8>
+						case <-timeoutSignal:
 							log.Println("steward: ward unhealthy; restarting")
 							close(wardDone)
 							startWard()
@@ -97,15 +97,15 @@ func main() {
 	doWork := func(done <-chan interface{}, _ time.Duration) <-chan interface{} {
 		log.Println("ward: Hello, I'm irresponsible!")
 		go func() {
-			<-done // <1>
+			<-done
 			log.Println("ward: I am halting.")
 		}()
 		return nil
 	}
-	doWorkWithSteward := newSteward(4*time.Second, doWork) // <2>
+	doWorkWithSteward := newSteward(4*time.Second, doWork)
 
 	done := make(chan interface{})
-	time.AfterFunc(9*time.Second, func() { // <3>
+	time.AfterFunc(9*time.Second, func() {
 		log.Println("main: halting steward and ward.")
 		close(done)
 	})

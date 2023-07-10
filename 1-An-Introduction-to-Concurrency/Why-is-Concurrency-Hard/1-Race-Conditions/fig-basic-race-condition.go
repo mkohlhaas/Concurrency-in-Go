@@ -6,7 +6,7 @@ import (
 
 func main() {
 	var data int
-	go func() { // <1>
+	go func() {
 		data++
 	}()
 	if data == 0 {

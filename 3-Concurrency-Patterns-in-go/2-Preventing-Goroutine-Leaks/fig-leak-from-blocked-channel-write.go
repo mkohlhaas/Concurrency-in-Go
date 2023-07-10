@@ -9,7 +9,7 @@ func main() {
 	newRandStream := func() <-chan int {
 		randStream := make(chan int)
 		go func() {
-			defer fmt.Println("newRandStream closure exited.") // <1>
+			defer fmt.Println("newRandStream closure exited.")
 			defer close(randStream)
 			for {
 				randStream <- rand.Int()

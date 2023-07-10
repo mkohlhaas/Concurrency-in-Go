@@ -20,8 +20,8 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	data := []byte("golang")
-	go printData(&wg, data[:3]) // <1>
-	go printData(&wg, data[3:]) // <2>
+	go printData(&wg, data[:3])
+	go printData(&wg, data[3:])
 
 	wg.Wait()
 }

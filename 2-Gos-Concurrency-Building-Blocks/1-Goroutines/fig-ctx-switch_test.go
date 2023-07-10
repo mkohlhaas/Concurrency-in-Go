@@ -13,23 +13,23 @@ func BenchmarkContextSwitch(b *testing.B) {
 	var token struct{}
 	sender := func() {
 		defer wg.Done()
-		<-begin // <1>
+		<-begin
 		for i := 0; i < b.N; i++ {
-			c <- token // <2>
+			c <- token
 		}
 	}
 	receiver := func() {
 		defer wg.Done()
-		<-begin // <1>
+		<-begin
 		for i := 0; i < b.N; i++ {
-			<-c // <3>
+			<-c
 		}
 	}
 
 	wg.Add(2)
 	go sender()
 	go receiver()
-	b.StartTimer() // <4>
-	close(begin)   // <5>
+	b.StartTimer()
+	close(begin)
 	wg.Wait()
 }

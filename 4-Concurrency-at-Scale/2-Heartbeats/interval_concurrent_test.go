@@ -19,9 +19,9 @@ func DoWork(
 		time.Sleep(2 * time.Second)
 
 		pulse := time.Tick(pulseInterval)
-	numLoop: // <2>
+	numLoop:
 		for _, n := range nums {
-			for { // <1>
+			for {
 				select {
 				case <-done:
 					return
@@ -31,7 +31,7 @@ func DoWork(
 					default:
 					}
 				case intStream <- n:
-					continue numLoop // <3>
+					continue numLoop
 				}
 			}
 		}
@@ -48,7 +48,7 @@ func TestDoWork_GeneratesAllNumbers(t *testing.T) {
 	const timeout = 2 * time.Second
 	heartbeat, results := DoWork(done, timeout/2, intSlice...)
 
-	<-heartbeat // <4>
+	<-heartbeat
 
 	i := 0
 	for {
@@ -60,7 +60,7 @@ func TestDoWork_GeneratesAllNumbers(t *testing.T) {
 				t.Errorf("index %v: expected %v, but received %v,", i, expected, r)
 			}
 			i++
-		case <-heartbeat: // <5>
+		case <-heartbeat:
 		case <-time.After(timeout):
 			t.Fatal("test timed out")
 		}

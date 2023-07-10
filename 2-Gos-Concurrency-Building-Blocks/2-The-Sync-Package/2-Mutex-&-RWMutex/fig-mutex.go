@@ -10,15 +10,15 @@ func main() {
 	var lock sync.Mutex
 
 	increment := func() {
-		lock.Lock()         // <1>
-		defer lock.Unlock() // <2>
+		lock.Lock()
+		defer lock.Unlock()
 		count++
 		fmt.Printf("Incrementing: %d\n", count)
 	}
 
 	decrement := func() {
-		lock.Lock()         // <1>
-		defer lock.Unlock() // <2>
+		lock.Lock()
+		defer lock.Unlock()
 		count--
 		fmt.Printf("Decrementing: %d\n", count)
 	}

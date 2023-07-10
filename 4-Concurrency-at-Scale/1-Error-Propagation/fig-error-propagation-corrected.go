@@ -19,8 +19,8 @@ func wrapError(err error, messagef string, msgArgs ...interface{}) MyError {
 	return MyError{
 		Inner:      err, //<1>
 		Message:    fmt.Sprintf(messagef, msgArgs...),
-		StackTrace: string(debug.Stack()),        // <2>
-		Misc:       make(map[string]interface{}), // <3>
+		StackTrace: string(debug.Stack()),
+		Misc:       make(map[string]interface{}),
 	}
 }
 
@@ -37,7 +37,7 @@ type LowLevelErr struct {
 func isGloballyExec(path string) (bool, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return false, LowLevelErr{(wrapError(err, err.Error()))} // <1>
+		return false, LowLevelErr{(wrapError(err, err.Error()))}
 	}
 	return info.Mode().Perm()&0100 == 0100, nil
 }
@@ -56,7 +56,7 @@ func runJob(id string) error {
 			err,
 			"cannot run job %q: requisite binaries not available",
 			id,
-		)} // <1>
+		)}
 	} else if isExecutable == false {
 		return wrapError(
 			nil,

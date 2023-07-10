@@ -9,7 +9,7 @@ func main() {
 	doWork := func(
 		done <-chan interface{},
 		strings <-chan string,
-	) <-chan interface{} { // <1>
+	) <-chan interface{} {
 		terminated := make(chan interface{})
 		go func() {
 			defer fmt.Println("doWork exited.")
@@ -19,7 +19,7 @@ func main() {
 				case s := <-strings:
 					// Do something interesting
 					fmt.Println(s)
-				case <-done: // <2>
+				case <-done:
 					return
 				}
 			}
@@ -30,13 +30,13 @@ func main() {
 	done := make(chan interface{})
 	terminated := doWork(done, nil)
 
-	go func() { // <3>
+	go func() {
 		// Cancel the operation after 1 second.
 		time.Sleep(1 * time.Second)
 		fmt.Println("Canceling doWork goroutine...")
 		close(done)
 	}()
 
-	<-terminated // <4>
+	<-terminated
 	fmt.Println("Done.")
 }

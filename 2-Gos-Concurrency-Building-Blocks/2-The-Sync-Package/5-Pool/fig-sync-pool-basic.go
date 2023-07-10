@@ -13,8 +13,8 @@ func main() {
 		},
 	}
 
-	myPool.Get()             // <1>
-	instance := myPool.Get() // <1>
-	myPool.Put(instance)     // <2>
-	myPool.Get()             // <3>
+	myPool.Get()
+	instance := myPool.Get()
+	myPool.Put(instance)
+	myPool.Get()
 }

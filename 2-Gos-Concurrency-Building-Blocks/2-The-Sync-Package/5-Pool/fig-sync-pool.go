@@ -11,7 +11,7 @@ func main() {
 		New: func() interface{} {
 			numCalcsCreated += 1
 			mem := make([]byte, 1024)
-			return &mem // <1>
+			return &mem
 		},
 	}
 
@@ -28,7 +28,7 @@ func main() {
 		go func() {
 			defer wg.Done()
 
-			mem := calcPool.Get().(*[]byte) // <2>
+			mem := calcPool.Get().(*[]byte)
 			defer calcPool.Put(mem)
 
 			// Assume something interesting, but quick is being done with

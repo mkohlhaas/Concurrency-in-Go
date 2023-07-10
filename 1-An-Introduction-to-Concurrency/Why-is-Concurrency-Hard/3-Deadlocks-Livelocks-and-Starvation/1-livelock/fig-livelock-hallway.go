@@ -22,16 +22,16 @@ func main() {
 		cadence.L.Unlock()
 	}
 
-	tryDir := func(dirName string, dir *int32, out *bytes.Buffer) bool { // <1>
+	tryDir := func(dirName string, dir *int32, out *bytes.Buffer) bool {
 		fmt.Fprintf(out, " %v", dirName)
-		atomic.AddInt32(dir, 1) // <2>
-		takeStep()              // <3>
+		atomic.AddInt32(dir, 1)
+		takeStep()
 		if atomic.LoadInt32(dir) == 1 {
 			fmt.Fprint(out, ". Success!")
 			return true
 		}
 		takeStep()
-		atomic.AddInt32(dir, -1) // <4>
+		atomic.AddInt32(dir, -1)
 		return false
 	}
 
@@ -43,15 +43,15 @@ func main() {
 		defer func() { fmt.Println(out.String()) }()
 		defer walking.Done()
 		fmt.Fprintf(&out, "%v is trying to scoot:", name)
-		for i := 0; i < 5; i++ { // <1>
-			if tryLeft(&out) || tryRight(&out) { // <2>
+		for i := 0; i < 5; i++ {
+			if tryLeft(&out) || tryRight(&out) {
 				return
 			}
 		}
 		fmt.Fprintf(&out, "\n%v tosses her hands up in exasperation!", name)
 	}
 
-	var peopleInHallway sync.WaitGroup // <3>
+	var peopleInHallway sync.WaitGroup
 	peopleInHallway.Add(2)
 	go walk(&peopleInHallway, "Alice")
 	go walk(&peopleInHallway, "Barbara")

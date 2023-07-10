@@ -33,7 +33,7 @@ func main() {
 				}
 			}
 
-			for i := 0; i < 2; i++ { // <1>
+			for i := 0; i < 2; i++ {
 				select {
 				case <-done:
 					return

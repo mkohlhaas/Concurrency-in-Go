@@ -15,7 +15,7 @@ func DoWork(
 		defer close(heartbeat)
 		defer close(intStream)
 
-		time.Sleep(2 * time.Second) // <1>
+		time.Sleep(2 * time.Second)
 
 		for _, n := range nums {
 			select {
@@ -51,7 +51,7 @@ func TestDoWork_GeneratesAllNumbers(t *testing.T) {
 					r,
 				)
 			}
-		case <-time.After(1 * time.Second): // <1>
+		case <-time.After(1 * time.Second):
 			t.Fatal("test timed out")
 		}
 	}

@@ -10,12 +10,12 @@ import (
 )
 
 func main() {
-	producer := func(wg *sync.WaitGroup, l sync.Locker) { // <1>
+	producer := func(wg *sync.WaitGroup, l sync.Locker) {
 		defer wg.Done()
 		for i := 5; i > 0; i-- {
 			l.Lock()
 			l.Unlock()
-			time.Sleep(1) // <2>
+			time.Sleep(1)
 		}
 	}
 
