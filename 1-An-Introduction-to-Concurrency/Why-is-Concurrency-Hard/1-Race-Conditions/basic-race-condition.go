@@ -10,6 +10,6 @@ func main() {
 		data++
 	}()
 	if data == 0 {
-		fmt.Printf("the value is %v.\n", data)
+		fmt.Printf("The value is %v.\n", data)
 	}
 }
