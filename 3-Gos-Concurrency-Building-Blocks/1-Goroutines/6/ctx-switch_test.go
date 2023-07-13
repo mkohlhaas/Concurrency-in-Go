@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func BenchmarkContextSwitch(b *testing.B) {
+func Benchmark_ContextSwitch(b *testing.B) {
 	var wg sync.WaitGroup
 	var token struct{}
 

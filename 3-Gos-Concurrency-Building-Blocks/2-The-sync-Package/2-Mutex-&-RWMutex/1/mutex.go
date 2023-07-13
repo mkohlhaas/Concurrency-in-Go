@@ -9,7 +9,7 @@ func main() {
 	var count int
 	var lock sync.Mutex
 	var arithmetic sync.WaitGroup
-  const runs = 1_000_000
+  const runs = 1_000
 
 	increment := func() {
 		lock.Lock()

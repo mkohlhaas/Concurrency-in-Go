@@ -10,6 +10,7 @@ import (
 
 func main() {
 	cadence := sync.NewCond(&sync.Mutex{})
+
 	go func() {
 		for range time.Tick(1 * time.Millisecond) {
 			cadence.Broadcast()

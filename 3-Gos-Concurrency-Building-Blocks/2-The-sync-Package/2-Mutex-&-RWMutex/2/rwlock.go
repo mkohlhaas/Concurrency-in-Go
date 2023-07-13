@@ -5,7 +5,7 @@ import (
 	"math"
 	"os"
 	"sync"
-	"text/tabwriter"
+	"text/tabwriter" // TODO: Use tablewriter
 	"time"
 )
 
@@ -16,14 +16,15 @@ func main() {
 		for i := 5; i > 0; i-- {
 			l.Lock()
 			l.Unlock()
-			time.Sleep(1)
+			// time.Sleep(1)
 		}
 	}
 
 	observer := func(wg *sync.WaitGroup, l sync.Locker) {
 		defer wg.Done()
 		l.Lock()
-		defer l.Unlock()
+		// defer l.Unlock()
+		l.Unlock()
 	}
 
 	test := func(count int, mutex, rwMutex sync.Locker) time.Duration {

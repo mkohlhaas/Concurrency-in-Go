@@ -8,6 +8,7 @@ import (
 func main() {
 	var memoryAccess sync.Mutex
 	var value int
+
 	go func() {
 		memoryAccess.Lock()
 		value++

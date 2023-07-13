@@ -17,7 +17,7 @@ func main() {
 		var count int
 		for begin := time.Now(); time.Since(begin) <= runtime; {
 			sharedLock.Lock()
-			time.Sleep(3 * time.Nanosecond)
+			time.Sleep(3 * time.Nanosecond) // pretending to work
 			sharedLock.Unlock()
 			count++
 		}
@@ -31,15 +31,15 @@ func main() {
 		var count int
 		for begin := time.Now(); time.Since(begin) <= runtime; {
 			sharedLock.Lock()
-			time.Sleep(1 * time.Nanosecond)
+			time.Sleep(1 * time.Nanosecond) // pretending to work
 			sharedLock.Unlock()
 
 			sharedLock.Lock()
-			time.Sleep(1 * time.Nanosecond)
+			time.Sleep(1 * time.Nanosecond) // pretending to work
 			sharedLock.Unlock()
 
 			sharedLock.Lock()
-			time.Sleep(1 * time.Nanosecond)
+			time.Sleep(1 * time.Nanosecond) // pretending to work
 			sharedLock.Unlock()
 
 			count++
