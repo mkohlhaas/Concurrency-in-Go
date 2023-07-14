@@ -1,3 +1,3 @@
-module adding-additional-stage-to-pipeline
+module main
 
-go 1.20
+go 1.21.1

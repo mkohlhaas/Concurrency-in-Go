@@ -12,15 +12,15 @@ type MyError struct {
 	Inner      error
 	Message    string
 	StackTrace string
-	Misc       map[string]interface{}
+	Misc       map[string]any
 }
 
-func wrapError(err error, messagef string, msgArgs ...interface{}) MyError {
+func wrapError(err error, messagef string, msgArgs ...any) MyError {
 	return MyError{
 		Inner:      err,
 		Message:    fmt.Sprintf(messagef, msgArgs...),
 		StackTrace: string(debug.Stack()),
-		Misc:       make(map[string]interface{}),
+		Misc:       make(map[string]any),
 	}
 }
 

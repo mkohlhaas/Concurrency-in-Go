@@ -28,5 +28,5 @@ loop:
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	fmt.Printf("Achieved %v cycles of work before signalled to stop.\n", workCounter)
+	fmt.Printf("Achieved %d cycles of work before signalled to stop.\n", workCounter)
 }

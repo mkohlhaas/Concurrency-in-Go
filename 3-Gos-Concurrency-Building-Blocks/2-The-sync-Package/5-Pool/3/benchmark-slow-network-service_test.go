@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"sync"
@@ -59,7 +59,7 @@ func BenchmarkNetworkRequest(b *testing.B) {
 		if err != nil {
 			b.Fatalf("cannot dial host: %v", err)
 		}
-		if _, err := ioutil.ReadAll(conn); err != nil {
+		if _, err := io.ReadAll(conn); err != nil {
 			b.Fatalf("cannot read: %v", err)
 		}
 		conn.Close()

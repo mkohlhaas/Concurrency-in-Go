@@ -8,7 +8,7 @@ import (
 
 func main() {
 	const numWorkers = 1024 * 1024
-  const bufferSize = 1024
+	const bufferSize = 1024
 	var numCalcsCreated int
 	var wg sync.WaitGroup
 
@@ -35,8 +35,8 @@ func main() {
 			defer calcPool.Put(mem)
 
 			// Assume something interesting, but quick is being done with this memory.
-      // ...
-      time.Sleep(1)
+			// ...
+			time.Sleep(1)
 		}()
 	}
 

@@ -1,3 +1,3 @@
-module greeter-with-done-chan
+module main
 
-go 1.20
+go 1.21.1

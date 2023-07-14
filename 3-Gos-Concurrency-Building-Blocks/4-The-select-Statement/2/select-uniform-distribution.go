@@ -20,5 +20,5 @@ func main() {
 		}
 	}
 
-	fmt.Printf("c1Count: %d\nc2Count: %d\n", c1Count, c2Count)
+	fmt.Printf("c1 count: %d\nc2 count: %d\n", c1Count, c2Count)
 }

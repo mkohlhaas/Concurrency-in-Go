@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"sync"
@@ -39,7 +39,7 @@ func startNetworkDaemon() *sync.WaitGroup {
 		// server loop
 		for {
 			// Only one connection at a time possible.
-      // Normally it would run in a separate goroutine.
+			// Normally it would run in a separate goroutine.
 			conn, err := server.Accept()
 			if err != nil {
 				log.Printf("cannot accept connection: %v", err)
@@ -77,7 +77,7 @@ func BenchmarkNetworkRequest(b *testing.B) {
 		if err != nil {
 			b.Fatalf("cannot dial host: %v", err)
 		}
-		if _, err := ioutil.ReadAll(conn); err != nil {
+		if _, err := io.ReadAll(conn); err != nil {
 			b.Fatalf("cannot read: %v", err)
 		}
 		conn.Close()

@@ -15,6 +15,7 @@ func main() {
 			for {
 				select {
 				case <-done:
+					fmt.Println("repeatFn is shutting down")
 					return
 				case valueStream <- fn():
 				}
@@ -32,6 +33,7 @@ func main() {
 			for i := 0; i < num; i++ {
 				select {
 				case <-done:
+					fmt.Println("take is shutting down")
 					return
 				case takeStream <- <-valueStream:
 				}
@@ -49,6 +51,7 @@ func main() {
 			for v := range valueStream {
 				select {
 				case <-done:
+					fmt.Println("toInt is shutting down")
 					return
 				case intStream <- v.(int):
 				}
@@ -64,7 +67,7 @@ func main() {
 		go func() {
 			defer close(primeStream)
 			for integer := range intStream {
-				integer -= 1
+				integer--
 				prime := true
 				for divisor := integer - 1; divisor > 1; divisor-- {
 					if integer%divisor == 0 {
@@ -76,6 +79,7 @@ func main() {
 				if prime {
 					select {
 					case <-done:
+						fmt.Println("primeFinder is shutting down")
 						return
 					case primeStream <- integer:
 					}
