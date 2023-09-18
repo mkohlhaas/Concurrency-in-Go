@@ -1,5 +1,3 @@
-// REDO
-
 package main
 
 import (
@@ -9,9 +7,9 @@ import (
 )
 
 func main() {
-  const capacity = 10
-	c := sync.NewCond(&sync.Mutex{})
+	const capacity = 10
 	queue := make([]any, 0, capacity)
+	c := sync.NewCond(&sync.Mutex{})
 
 	removeFromQueue := func(delay time.Duration) {
 		time.Sleep(delay)

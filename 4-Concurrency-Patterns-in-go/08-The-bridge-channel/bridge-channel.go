@@ -36,7 +36,7 @@ func main() {
 				var stream <-chan any
 				select {
 				case maybeStream, ok := <-chanStream:
-					if ok == false {
+					if !ok {
 						return
 					}
 					stream = maybeStream
@@ -45,8 +45,8 @@ func main() {
 				}
 				for val := range orDone(done, stream) {
 					// When the stream we're currently looping over is closed, we break out of this loop
-          // performing the reads from this channel, and continue with the next iteration of the
-          // loop, selecting channels to read from. This provides us with an unbroken stream of values.
+					// performing the reads from this channel, and continue with the next iteration of the
+					// loop, selecting channels to read from. This provides us with an unbroken stream of values.
 					select {
 					case valStream <- val:
 					case <-done:
@@ -57,7 +57,7 @@ func main() {
 		return valStream
 	}
 
-	// returns a channel of channels
+	// returns a channel of receive-only channels
 	genVals := func() <-chan <-chan any {
 		chanStream := make(chan (<-chan any))
 		go func() {

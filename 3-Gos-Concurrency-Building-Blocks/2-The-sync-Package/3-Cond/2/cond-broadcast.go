@@ -1,6 +1,4 @@
-// REDO
 package main
-
 
 import (
 	"fmt"

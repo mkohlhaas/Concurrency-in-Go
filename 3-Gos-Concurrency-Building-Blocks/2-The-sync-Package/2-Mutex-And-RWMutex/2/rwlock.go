@@ -23,7 +23,6 @@ func main() {
 	observer := func(wg *sync.WaitGroup, l sync.Locker) {
 		defer wg.Done()
 		l.Lock()
-		// defer l.Unlock()
 		l.Unlock()
 	}
 

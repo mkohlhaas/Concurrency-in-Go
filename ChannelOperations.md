@@ -1,7 +1,7 @@
 | Operation | Channel State      | Result                                                                                   |
 |-----------|--------------------|------------------------------------------------------------------------------------------|
-| Read      | nil                | Block                                                                                    |
-|           | Open and Empty     | Block                                                                                    |
+| Read/     | nil                | Block                                                                                    |
+| Receive   | Open and Empty     | Block                                                                                    |
 |           | Open and Not Empty | Value                                                                                    |
 |           | Closed             | \<default value\>, false                                                                 |
 |           | Write Only         | *Compilation Error*                                                                      |

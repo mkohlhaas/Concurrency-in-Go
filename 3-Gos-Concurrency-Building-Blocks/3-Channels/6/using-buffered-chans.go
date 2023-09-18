@@ -22,6 +22,6 @@ func main() {
 	}()
 
 	for i := range intStream {
-    fmt.Fprintf(&stdoutBuff, "Received: %v\n", i)
+		fmt.Fprintf(&stdoutBuff, "Received: %v\n", i)
 	}
 }

@@ -34,7 +34,7 @@ func startNetworkDaemon() *sync.WaitGroup {
 		}
 		defer server.Close()
 
-		wg.Done() // let go of the  nit function
+		wg.Done() // let go of the init function
 
 		// server loop
 		for {

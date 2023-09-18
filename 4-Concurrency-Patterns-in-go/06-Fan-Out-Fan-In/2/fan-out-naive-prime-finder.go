@@ -14,7 +14,7 @@ func main() {
 
 		go func() {
 			defer close(valueStream)
-      defer fmt.Println("repeatFn is shutting down. (defer)")
+			defer fmt.Println("repeatFn is shutting down. (defer)")
 			for {
 				select {
 				case <-done:
@@ -33,7 +33,7 @@ func main() {
 
 		go func() {
 			defer close(takeStream)
-      defer fmt.Println("takeStream is shutting down. (defer)")
+			defer fmt.Println("takeStream is shutting down. (defer)")
 			for i := 0; i < num; i++ {
 				select {
 				case <-done:
@@ -52,7 +52,7 @@ func main() {
 
 		go func() {
 			defer close(intStream)
-      defer fmt.Println("intStream is shutting down. (defer)")
+			defer fmt.Println("intStream is shutting down. (defer)")
 			for v := range valueStream {
 				select {
 				case <-done:
@@ -71,7 +71,7 @@ func main() {
 
 		go func() {
 			defer close(primeStream)
-      defer fmt.Println("primeFinder is shutting down. (defer)")
+			defer fmt.Println("primeFinder is shutting down. (defer)")
 			for integer := range intStream {
 				integer -= 1
 				prime := true
@@ -102,7 +102,7 @@ func main() {
 
 		multiplex := func(c <-chan any) {
 			defer wg.Done()
-      defer fmt.Println("fanIn is shutting down. (defer)")
+			defer fmt.Println("fanIn is shutting down. (defer)")
 			for i := range c {
 				select {
 				case <-done:
@@ -151,5 +151,5 @@ func main() {
 
 	fmt.Printf("Search took: %v\n", time.Since(start))
 	close(done)
-  time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Second)
 }

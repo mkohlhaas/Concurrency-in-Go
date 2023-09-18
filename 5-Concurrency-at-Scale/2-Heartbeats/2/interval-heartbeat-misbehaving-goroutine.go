@@ -30,7 +30,7 @@ func main() {
 				}
 			}
 
-      // will stop after some iterations
+			// will stop after some iterations
 			for i := 0; i < 10; i++ {
 				select {
 				case <-done:
