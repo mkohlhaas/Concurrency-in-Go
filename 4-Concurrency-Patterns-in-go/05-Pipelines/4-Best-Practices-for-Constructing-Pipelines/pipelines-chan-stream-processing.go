@@ -5,8 +5,8 @@ import (
 )
 
 func main() {
-	generator := func(done <-chan any, integers ...int) <-chan int {
-		intStream := make(chan int, len(integers))
+	generator := func[T any](done <-chan struct{}, integers ...T) <-chan T {
+		intStream := make(chan T, len(integers))
 
 		go func() {
 			defer close(intStream)
@@ -22,8 +22,8 @@ func main() {
 		return intStream
 	}
 
-	multiply := func(done <-chan any, intStream <-chan int, multiplier int) <-chan int {
-		multipliedStream := make(chan int)
+	multiply := func[T ~int | ~int64 | ~float64](done <-chan struct{}, intStream <-chan T, multiplier T) <-chan T {
+		multipliedStream := make(chan T)
 
 		go func() {
 			defer close(multipliedStream)
@@ -39,8 +39,8 @@ func main() {
 		return multipliedStream
 	}
 
-	add := func(done <-chan any, intStream <-chan int, additive int) <-chan int {
-		addedStream := make(chan int)
+	add := func[T ~int | ~int64 | ~float64](done <-chan struct{}, intStream <-chan T, additive T) <-chan T {
+		addedStream := make(chan T)
 
 		go func() {
 			defer close(addedStream)
@@ -56,7 +56,7 @@ func main() {
 		return addedStream
 	}
 
-	done := make(chan any)
+	done := make(chan struct{})
 	defer close(done)
 
 	intStream := generator(done, 1, 2, 3, 4)

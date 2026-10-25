@@ -14,7 +14,7 @@ func main() {
 		return s.Sys
 	}
 
-	var c <-chan any
+	var c <-chan struct{}
 	var wg sync.WaitGroup
 	noop := func() { wg.Done(); <-c }
 

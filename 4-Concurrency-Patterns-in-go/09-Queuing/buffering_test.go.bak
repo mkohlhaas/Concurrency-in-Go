@@ -1,0 +1,68 @@
+package main
+
+import (
+	"bufio"
+	"io"
+	"log"
+	"os"
+	"testing"
+)
+
+func BenchmarkUnbufferedWrite(b *testing.B) {
+	performWrite(b, tmpFileOrFatal())
+}
+
+func BenchmarkBufferedWrite(b *testing.B) {
+	bufferredFile := bufio.NewWriter(tmpFileOrFatal())
+	performWrite(b, bufio.NewWriter(bufferredFile))
+}
+
+func tmpFileOrFatal() *os.File {
+	file, err := os.CreateTemp("", "tmp")
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	return file
+}
+
+func repeat[T any](done <-chan struct{}, values ...T) <-chan T {
+	valueStream := make(chan T)
+	go func() {
+		defer close(valueStream)
+		for {
+			for _, v := range values {
+				select {
+				case <-done:
+					return
+				case valueStream <- v:
+				}
+			}
+		}
+	}()
+	return valueStream
+}
+
+func take[T any](done <-chan struct{}, valueStream <-chan T, num int) <-chan T {
+	takeStream := make(chan T)
+	go func() {
+		defer close(takeStream)
+		for i := 0; i < num; i++ {
+			select {
+			case <-done:
+				return
+			case takeStream <- <-valueStream:
+			}
+		}
+	}()
+	return takeStream
+}
+
+func performWrite(b *testing.B, writer io.Writer) {
+	done := make(chan struct{})
+	defer close(done)
+
+	b.ResetTimer()
+	for bt := range take(done, repeat(done, byte(0)), b.N) {
+		writer.Write([]byte{bt})
+	}
+}

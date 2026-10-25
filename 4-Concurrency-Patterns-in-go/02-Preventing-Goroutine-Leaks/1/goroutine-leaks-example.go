@@ -3,8 +3,8 @@ package main
 import "fmt"
 
 func main() {
-	doWork := func(strings <-chan string) <-chan any {
-		completed := make(chan any)
+	doWork := func(strings <-chan string) <-chan struct{} {
+		completed := make(chan struct{})
 
 		go func() {
 			defer fmt.Println("doWork exited.")

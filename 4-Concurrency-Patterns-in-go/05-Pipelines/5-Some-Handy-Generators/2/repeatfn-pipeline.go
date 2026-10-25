@@ -5,47 +5,43 @@ import (
 	"math/rand"
 )
 
+func repeatFn[T any](done <-chan struct{}, fn func() T) <-chan T {
+	valueStream := make(chan T)
+	go func() {
+		defer close(valueStream)
+		for {
+			select {
+			case <-done:
+				return
+			case valueStream <- fn():
+			}
+		}
+	}()
+	return valueStream
+}
+
+func take[T any](done <-chan struct{}, valueStream <-chan T, num int) <-chan T {
+	takeStream := make(chan T)
+	go func() {
+		defer close(takeStream)
+		for i := 0; i < num; i++ {
+			select {
+			case <-done:
+				return
+			case takeStream <- <-valueStream:
+			}
+		}
+	}()
+	return takeStream
+}
+
 func main() {
-	repeatFn := func(done <-chan any, fn func() any) <-chan any {
-		valueStream := make(chan any)
-
-		go func() {
-			defer close(valueStream)
-			for {
-				select {
-				case <-done:
-					return
-				case valueStream <- fn():
-				}
-			}
-		}()
-
-		return valueStream
-	}
-
-	take := func(done <-chan any, valueStream <-chan any, num int) <-chan any {
-		takeStream := make(chan any)
-
-		go func() {
-			defer close(takeStream)
-			for i := 0; i < num; i++ {
-				select {
-				case <-done:
-					return
-				case takeStream <- <-valueStream:
-				}
-			}
-		}()
-
-		return takeStream
-	}
-
-	done := make(chan any)
+	done := make(chan struct{})
 	defer close(done)
 
-	rand := func() any { return rand.Intn(100) }
+	randInt := func() int { return rand.Intn(100) }
 
-	for num := range take(done, repeatFn(done, rand), 10) {
+	for num := range take(done, repeatFn(done, randInt), 10) {
 		fmt.Println(num)
 	}
 }

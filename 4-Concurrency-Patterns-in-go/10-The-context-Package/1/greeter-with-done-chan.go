@@ -8,7 +8,7 @@ import (
 
 func main() {
 	var wg sync.WaitGroup
-	done := make(chan any)
+	done := make(chan struct{})
 	defer close(done)
 
 	wg.Add(1)
@@ -32,7 +32,7 @@ func main() {
 	wg.Wait()
 }
 
-func printGreeting(done <-chan any) error {
+func printGreeting(done <-chan struct{}) error {
 	greeting, err := genGreeting(done)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func printGreeting(done <-chan any) error {
 	return nil
 }
 
-func printFarewell(done <-chan any) error {
+func printFarewell(done <-chan struct{}) error {
 	farewell, err := genFarewell(done)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func printFarewell(done <-chan any) error {
 	return nil
 }
 
-func genGreeting(done <-chan any) (string, error) {
+func genGreeting(done <-chan struct{}) (string, error) {
 	switch locale, err := locale(done); {
 	case err != nil:
 		return "", err
@@ -60,7 +60,7 @@ func genGreeting(done <-chan any) (string, error) {
 	return "", fmt.Errorf("unsupported locale")
 }
 
-func genFarewell(done <-chan any) (string, error) {
+func genFarewell(done <-chan struct{}) (string, error) {
 	switch locale, err := locale(done); {
 	case err != nil:
 		return "", err
@@ -70,7 +70,7 @@ func genFarewell(done <-chan any) (string, error) {
 	return "", fmt.Errorf("unsupported locale")
 }
 
-func locale(done <-chan any) (string, error) {
+func locale(done <-chan struct{}) (string, error) {
 	select {
 	case <-done:
 		return "", fmt.Errorf("canceled")

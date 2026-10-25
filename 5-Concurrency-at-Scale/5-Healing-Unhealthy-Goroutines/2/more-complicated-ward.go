@@ -7,203 +7,141 @@ import (
 	"time"
 )
 
-func main() {
-	var or func(channels ...<-chan any) <-chan any
-	or = func(channels ...<-chan any) <-chan any {
-		switch len(channels) {
-		case 0:
-			return nil
-		case 1:
-			return channels[0]
-		}
+type startGoroutineFn func(
+	done <-chan struct{},
+	pulseInterval time.Duration,
+) (heartbeat <-chan struct{}, results <-chan error)
 
-		orDone := make(chan any)
+func newSteward(
+	timeout time.Duration,
+	s startGoroutineFn,
+) startGoroutineFn {
+	return func(
+		done <-chan struct{},
+		pulseInterval time.Duration,
+	) (<-chan struct{}, <-chan error) {
+		heartbeat := make(chan struct{})
+		results := make(chan error)
+
 		go func() {
-			defer close(orDone)
+			defer close(heartbeat)
+			defer close(results)
 
-			switch len(channels) {
-			case 2:
-				select {
-				case <-channels[0]:
-				case <-channels[1]:
-				}
-			default:
-				select {
-				case <-channels[0]:
-				case <-channels[1]:
-				case <-channels[2]:
-				case <-or(append(channels[3:], orDone)...):
-				}
+			var wardDone chan struct{}
+			var wardHeartbeat <-chan struct{}
+			var wardResults <-chan error
+			startWard := func() {
+				wardDone = make(chan struct{})
+				wardHeartbeat, wardResults = s(wardDone, timeout/2)
 			}
-		}()
-		return orDone
-	}
+			startWard()
+			pulse := time.Tick(pulseInterval)
 
-	orDone := func(done, c <-chan any) <-chan any {
-		valStream := make(chan any)
-		go func() {
-			defer close(valStream)
+		monitorLoop:
 			for {
-				select {
-				case <-done:
-					return
-				case v, ok := <-c:
-					if ok == false {
-						return
-					}
-					select {
-					case valStream <- v:
-					case <-done:
-					}
-				}
-			}
-		}()
-		return valStream
-	}
+				timeoutSignal := time.After(timeout)
 
-	type startGoroutineFn func(done <-chan any, pulseInterval time.Duration) (heartbeat <-chan any)
-
-	newSteward := func(timeout time.Duration, startGoroutine startGoroutineFn) startGoroutineFn {
-		return func(done <-chan any, pulseInterval time.Duration) <-chan any {
-			heartbeat := make(chan any)
-			go func() {
-				defer close(heartbeat)
-
-				var wardDone chan any
-				var wardHeartbeat <-chan any
-				startWard := func() {
-					wardDone = make(chan any)
-					wardHeartbeat = startGoroutine(or(wardDone, done), timeout/2)
-				}
-				startWard()
-				pulse := time.Tick(pulseInterval)
-
-			monitorLoop:
 				for {
-					timeoutSignal := time.After(timeout)
-
-					for {
+					select {
+					case <-pulse:
 						select {
-						case <-pulse:
-							select {
-							case heartbeat <- struct{}{}:
-							default:
-							}
-						case <-wardHeartbeat:
-							continue monitorLoop
-						case <-timeoutSignal:
-							log.Println("steward: ward unhealthy; restarting")
-							close(wardDone)
-							startWard()
-							continue monitorLoop
-						case <-done:
-							return
+						case heartbeat <- struct{}{}:
+						default:
 						}
-					}
-				}
-			}()
-
-			return heartbeat
-		}
-	}
-
-	take := func(done <-chan any, valueStream <-chan any, num int) <-chan any {
-		takeStream := make(chan any)
-		go func() {
-			defer close(takeStream)
-			for i := 0; i < num; i++ {
-				select {
-				case <-done:
-					return
-				case takeStream <- <-valueStream:
-				}
-			}
-		}()
-		return takeStream
-	}
-
-	bridge := func(done <-chan any, chanStream <-chan <-chan any) <-chan any {
-		valStream := make(chan any)
-		go func() {
-			defer close(valStream)
-			for {
-				var stream <-chan any
-				select {
-				case maybeStream, ok := <-chanStream:
-					if ok == false {
+					case <-wardHeartbeat:
+						continue monitorLoop
+					case err := <-wardResults:
+						results <- err
+						continue monitorLoop
+					case <-timeoutSignal:
+						log.Println("steward: ward unhealthy; restarting")
+						close(wardDone)
+						startWard()
+						continue monitorLoop
+					case <-done:
+						if wardDone != nil {
+							close(wardDone)
+						}
 						return
 					}
-					stream = maybeStream
-				case <-done:
-					return
-				}
-				for val := range orDone(done, stream) {
-					select {
-					case valStream <- val:
-					case <-done:
-					}
 				}
 			}
 		}()
-		return valStream
-	}
 
-	doWorkFn := func(done <-chan any, intList ...int) (startGoroutineFn, <-chan any) {
-		intChanStream := make(chan (<-chan any))
-		intStream := bridge(done, intChanStream)
-		doWork := func(done <-chan any, pulseInterval time.Duration) <-chan any {
-			intStream := make(chan any)
-			heartbeat := make(chan any)
-			go func() {
-				defer close(intStream)
+		return heartbeat, results
+	}
+}
+
+func main() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ltime | log.LUTC)
+
+	doWorkFn := func(
+		done <-chan struct{},
+		_ time.Duration,
+	) (<-chan struct{}, <-chan error) {
+		log.Println("ward: restarting")
+		heartbeat := make(chan struct{})
+		results := make(chan error)
+		go func() {
+			defer close(heartbeat)
+			defer close(results)
+
+			localDone := make(chan struct{})
+			time.AfterFunc(13*time.Second, func() {
+				log.Println("ward: halting by steward request")
+				close(localDone)
+			})
+
+			for i := 0; i < 10; i++ {
 				select {
-				case intChanStream <- intStream: // When (re-)starting wards we just insert the new intStream into the bridge!!! client just keeps on using intChanStream!!!
+				case heartbeat <- struct{}{}:
+				case <-localDone:
+					return
 				case <-done:
 					return
 				}
+				time.Sleep(1 * time.Second)
+			}
 
-				pulse := time.Tick(pulseInterval)
-
-				for {
-				valueLoop:
-					for _, intVal := range intList {
-						if intVal < 0 { // on a negative value stop the ward simulating an unhealthy ward
-							log.Printf("negative value: %v\n", intVal)
-							return
-						}
-
-						for {
-							select {
-							case <-pulse:
-								select {
-								case heartbeat <- struct{}{}: // this ward sends a heartbeat
-								default:
-								}
-							case intStream <- intVal:
-								continue valueLoop
-							case <-done:
-								return
-							}
-						}
-					}
+			for i := 0; i < 10; i++ {
+				select {
+				case results <- fmt.Errorf("error from iteration %v", i):
+				case <-localDone:
+					return
+				case <-done:
+					return
 				}
-			}()
-			return heartbeat
-		}
-		return doWork, intStream
+				time.Sleep(1 * time.Second)
+			}
+		}()
+
+		return heartbeat, results
 	}
 
-	log.SetFlags(log.Ltime | log.LUTC)
-	log.SetOutput(os.Stdout)
+	doWorkWithSteward := newSteward(4*time.Second, doWorkFn)
 
-	done := make(chan any)
-	defer close(done)
+	done := make(chan struct{})
+	time.AfterFunc(9*time.Second, func() {
+		log.Println("main: halting steward and ward")
+		close(done)
+	})
 
-	doWork, intStream := doWorkFn(done, 1, 2, 1, -3, 4, 5)
-	doWorkWithSteward := newSteward(1*time.Second, doWork)
-	doWorkWithSteward(done, 1*time.Hour)
-
-	for intVal := range take(done, intStream, 25) {
-		fmt.Printf("Received: %v\n", intVal)
+	heartbeatStream, resultsStream := doWorkWithSteward(done, 4*time.Second)
+	for {
+		select {
+		case _, ok := <-heartbeatStream:
+			if !ok {
+				return
+			}
+			log.Println("main: received heartbeat")
+		case err, ok := <-resultsStream:
+			if !ok {
+				return
+			}
+			if err != nil {
+				log.Printf("main: received error: %v\n", err)
+			}
+		}
 	}
 }

@@ -1,0 +1,70 @@
+package main
+
+import (
+	"fmt"
+	"testing"
+)
+
+func repeat[T any](done <-chan struct{}, values ...T) <-chan T {
+	valueStream := make(chan T)
+	go func() {
+		defer close(valueStream)
+		for {
+			for _, v := range values {
+				select {
+				case <-done:
+					return
+				case valueStream <- v:
+				}
+			}
+		}
+	}()
+	return valueStream
+}
+
+func take[T any](done <-chan struct{}, valueStream <-chan T, num int) <-chan T {
+	takeStream := make(chan T)
+	go func() {
+		defer close(takeStream)
+		for i := 0; i < num; i++ {
+			select {
+			case <-done:
+				return
+			case takeStream <- <-valueStream:
+			}
+		}
+	}()
+	return takeStream
+}
+
+func toString[T fmt.Stringer](done <-chan struct{}, valueStream <-chan T) <-chan string {
+	stringStream := make(chan string)
+	go func() {
+		defer close(stringStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case stringStream <- v.String():
+			}
+		}
+	}()
+	return stringStream
+}
+
+func BenchmarkGeneric(b *testing.B) {
+	done := make(chan struct{})
+	defer close(done)
+
+	b.ResetTimer()
+	for range toString(done, take(done, repeat(done, &myStringer{"foo"}), b.N)) {
+	}
+}
+
+type myStringer struct {
+	value string
+}
+
+func (m *myStringer) String() string {
+	return m.value
+}

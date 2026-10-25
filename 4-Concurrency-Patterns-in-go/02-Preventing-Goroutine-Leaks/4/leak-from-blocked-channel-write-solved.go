@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	newRandStream := func(done <-chan any) <-chan int {
+	newRandStream := func(done <-chan struct{}) <-chan int {
 		randStream := make(chan int)
 
 		go func() {
@@ -25,7 +25,7 @@ func main() {
 		return randStream
 	}
 
-	done := make(chan any)
+	done := make(chan struct{})
 	randStream := newRandStream(done)
 	fmt.Println("3 random ints:")
 	for i := 1; i <= 3; i++ {

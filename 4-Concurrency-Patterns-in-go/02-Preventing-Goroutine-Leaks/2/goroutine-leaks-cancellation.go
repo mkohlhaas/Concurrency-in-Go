@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-	doWork := func(done <-chan any, strings <-chan string) <-chan any {
-		terminated := make(chan any)
+	doWork := func(done <-chan struct{}, strings <-chan string) <-chan struct{} {
+		terminated := make(chan struct{})
 
 		go func() {
 			defer fmt.Println("doWork exited.")
@@ -26,7 +26,7 @@ func main() {
 		return terminated
 	}
 
-	done := make(chan any)
+	done := make(chan struct{})
 	terminated := doWork(done, nil)
 
 	go func() {

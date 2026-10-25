@@ -7,7 +7,7 @@ import (
 
 func main() {
 	start := time.Now()
-	c := make(chan any)
+	c := make(chan struct{})
 
 	go func() {
 		time.Sleep(2 * time.Second)

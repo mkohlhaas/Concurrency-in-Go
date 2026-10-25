@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	begin := make(chan any)
+	begin := make(chan struct{})
 	var wg sync.WaitGroup
 	for i := 0; i < 5; i++ {
 		wg.Add(1)

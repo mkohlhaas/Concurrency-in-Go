@@ -5,8 +5,8 @@ import (
 )
 
 func main() {
-	c1 := make(chan any)
-	c2 := make(chan any)
+	c1 := make(chan struct{})
+	c2 := make(chan struct{})
 	close(c1)
 	close(c2)
 

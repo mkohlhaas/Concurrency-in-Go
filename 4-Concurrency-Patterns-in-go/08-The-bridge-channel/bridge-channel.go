@@ -4,77 +4,74 @@ import (
 	"fmt"
 )
 
+func orDone[T any](done <-chan struct{}, c <-chan T) <-chan T {
+	valStream := make(chan T)
+	go func() {
+		defer close(valStream)
+		for {
+			select {
+			case <-done:
+				return
+			case v, ok := <-c:
+				if ok == false {
+					return
+				}
+				select {
+				case valStream <- v:
+				case <-done:
+				}
+			}
+		}
+	}()
+	return valStream
+}
+
+func bridge[T any](done <-chan struct{}, chanStream <-chan <-chan T) <-chan T {
+	valStream := make(chan T)
+	go func() {
+		defer close(valStream)
+		for {
+			var stream <-chan T
+			select {
+			case <-done:
+				return
+			case maybeStream, ok := <-chanStream:
+				if ok == false {
+					return
+				}
+				stream = maybeStream
+			}
+			for val := range orDone(done, stream) {
+				select {
+				case <-done:
+					return
+				case valStream <- val:
+				}
+			}
+		}
+	}()
+	return valStream
+}
+
 func main() {
-	orDone := func(done, c <-chan any) <-chan any {
-		valStream := make(chan any)
-		go func() {
-			defer close(valStream)
-			for {
-				select {
-				case <-done:
-					return
-				case v, ok := <-c:
-					if ok == false {
-						return
-					}
-					select {
-					case valStream <- v:
-					case <-done:
-					}
-				}
-			}
-		}()
-		return valStream
-	}
+	done := make(chan struct{})
+	defer close(done)
 
-	// A technique called bridging the channels destructures a channel of channels into a simple channel.
-	bridge := func(done <-chan any, chanStream <-chan <-chan any) <-chan any {
-		valStream := make(chan any)
+	chanStream := func() <-chan <-chan string {
+		cs := make(chan (<-chan string))
 		go func() {
-			defer close(valStream)
-			for {
-				var stream <-chan any
-				select {
-				case maybeStream, ok := <-chanStream:
-					if !ok {
-						return
-					}
-					stream = maybeStream
-				case <-done:
-					return
-				}
-				for val := range orDone(done, stream) {
-					// When the stream we're currently looping over is closed, we break out of this loop
-					// performing the reads from this channel, and continue with the next iteration of the
-					// loop, selecting channels to read from. This provides us with an unbroken stream of values.
-					select {
-					case valStream <- val:
-					case <-done:
-					}
-				}
-			}
-		}()
-		return valStream
-	}
-
-	// returns a channel of receive-only channels
-	genVals := func() <-chan <-chan any {
-		chanStream := make(chan (<-chan any))
-		go func() {
-			defer close(chanStream)
-			// create a channel for every integer (1..10)
+			defer close(cs)
 			for i := 0; i < 10; i++ {
-				stream := make(chan any, 1)
-				stream <- i
+				stream := make(chan string, 1)
+				stream <- fmt.Sprintf("%d", i)
 				close(stream)
-				chanStream <- stream
+				cs <- stream
 			}
 		}()
-		return chanStream
-	}
+		return cs
+	}()
 
-	// too lazy to care about the done channel
-	for v := range bridge(nil, genVals()) {
+	for v := range bridge(done, chanStream) {
 		fmt.Printf("%v ", v)
 	}
 	fmt.Println()
