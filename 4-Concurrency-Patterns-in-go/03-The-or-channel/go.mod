@@ -1,3 +1,4 @@
 module main
 
-go 1.21.1
+go 1.27.3
+toolchain go1.27.3
