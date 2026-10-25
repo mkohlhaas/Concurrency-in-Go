@@ -17,9 +17,9 @@ func main() {
 
 	memoryAccess.Lock()
 	if value == 0 {
-		fmt.Printf("The value is %d.\n", value)
+		fmt.Printf("value: %d\n", value)
 	} else {
-		fmt.Printf("The value is %d.\n", value)
+		fmt.Printf("value: %d\n", value)
 	}
 	memoryAccess.Unlock()
 }

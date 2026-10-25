@@ -11,7 +11,9 @@ func main() {
 		data++
 	}()
 
-	if data != 0 {
-		fmt.Printf("The value is %v.\n", data)
+	//	time.Sleep(1 * time.Second) // ⚠️ this is bad!
+
+	if data == 0 {
+		fmt.Printf("value: %v\n", data)
 	}
 }
