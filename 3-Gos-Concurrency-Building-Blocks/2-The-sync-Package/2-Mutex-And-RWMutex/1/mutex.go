@@ -5,11 +5,11 @@ import (
 	"sync"
 )
 
+const runs = 1_000
+
 func main() {
 	var count int
 	var lock sync.Mutex
-	var arithmetic sync.WaitGroup
-	const runs = 1_000
 
 	increment := func() {
 		lock.Lock()
@@ -25,25 +25,18 @@ func main() {
 		fmt.Printf("Decrementing: %.3d\n", count)
 	}
 
-	// increment
-	for i := 0; i <= runs; i++ {
-		arithmetic.Add(1)
-		go func() {
-			defer arithmetic.Done()
-			increment()
-		}()
+	var arithmetic sync.WaitGroup
+
+	for range runs {
+		arithmetic.Go(increment)
 	}
 
-	// decrement
-	for i := 0; i <= runs; i++ {
-		arithmetic.Add(1)
-		go func() {
-			defer arithmetic.Done()
-			decrement()
-		}()
+	for range runs {
+		arithmetic.Go(decrement)
 	}
 
 	arithmetic.Wait()
+
 	fmt.Println("Arithmetic complete.")
-	fmt.Printf("count: %d\n", count)
+	fmt.Printf("Count: %d\n", count)
 }

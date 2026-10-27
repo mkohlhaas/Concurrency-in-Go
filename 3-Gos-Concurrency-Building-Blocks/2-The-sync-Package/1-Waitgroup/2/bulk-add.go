@@ -5,8 +5,9 @@ import (
 	"sync"
 )
 
+const numGreeters = 50
+
 func main() {
-	const numGreeters = 50
 	var wg sync.WaitGroup
 
 	hello := func(id int) {
@@ -15,8 +16,10 @@ func main() {
 	}
 
 	wg.Add(numGreeters)
-	for i := 0; i < numGreeters; i++ {
+
+	for i := range numGreeters {
 		go hello(i + 1)
 	}
+
 	wg.Wait()
 }

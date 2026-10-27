@@ -59,7 +59,7 @@ func warmServiceConnCache() *sync.Pool {
 	p := &sync.Pool{
 		New: connectToService,
 	}
-	for i := 0; i < numServices; i++ {
+	for range numServices {
 		p.Put(p.New())
 	}
 	return p
@@ -72,7 +72,7 @@ func connectToService() any {
 }
 
 func BenchmarkNetworkRequest(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		conn, err := net.Dial(network, url)
 		if err != nil {
 			b.Fatalf("cannot dial host: %v", err)

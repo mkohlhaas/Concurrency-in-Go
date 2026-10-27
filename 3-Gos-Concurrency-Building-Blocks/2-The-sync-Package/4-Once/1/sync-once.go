@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+const numIncs = 100
+
 func main() {
 	var count int
 
@@ -14,15 +16,16 @@ func main() {
 
 	var once sync.Once
 
-	var increments sync.WaitGroup
-	increments.Add(100)
-	for i := 0; i < 100; i++ {
+	var wg sync.WaitGroup
+	wg.Add(numIncs)
+
+	for range numIncs {
 		go func() {
-			defer increments.Done()
+			defer wg.Done()
 			once.Do(increment)
 		}()
 	}
 
-	increments.Wait()
-	fmt.Printf("'count' is %d.\n", count)
+	wg.Wait()
+	fmt.Printf("Count: %d\n", count)
 }

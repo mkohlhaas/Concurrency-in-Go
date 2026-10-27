@@ -21,7 +21,7 @@ func init() {
 }
 
 func connectToService() any {
-	time.Sleep(1 * time.Second)
+	time.Sleep(time.Second)
 	return struct{}{}
 }
 
@@ -34,7 +34,11 @@ func startNetworkDaemon() *sync.WaitGroup {
 		if err != nil {
 			log.Fatalf("cannot listen: %v", err)
 		}
-		defer server.Close()
+		defer func() {
+			if err := server.Close(); err != nil {
+				log.Printf("cannot close server: %v", err)
+			}
+		}()
 
 		wg.Done()
 
@@ -45,8 +49,12 @@ func startNetworkDaemon() *sync.WaitGroup {
 				continue
 			}
 			connectToService()
-			fmt.Fprintln(conn, "")
-			conn.Close()
+			if _, err := fmt.Fprintln(conn, ""); err != nil {
+				log.Printf("cannot write response: %v", err)
+			}
+			if err := conn.Close(); err != nil {
+				log.Printf("cannot close connection: %v", err)
+			}
 		}
 	}()
 
@@ -54,7 +62,7 @@ func startNetworkDaemon() *sync.WaitGroup {
 }
 
 func BenchmarkNetworkRequest(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		conn, err := net.Dial(network, url)
 		if err != nil {
 			b.Fatalf("cannot dial host: %v", err)
@@ -62,6 +70,8 @@ func BenchmarkNetworkRequest(b *testing.B) {
 		if _, err := io.ReadAll(conn); err != nil {
 			b.Fatalf("cannot read: %v", err)
 		}
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			b.Fatalf("cannot close connection: %v", err)
+		}
 	}
 }
