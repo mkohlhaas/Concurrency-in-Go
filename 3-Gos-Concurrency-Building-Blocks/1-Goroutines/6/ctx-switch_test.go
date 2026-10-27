@@ -9,29 +9,28 @@ func Benchmark_ContextSwitch(b *testing.B) {
 	var wg sync.WaitGroup
 	var token struct{}
 
-	begin := make(chan struct{})
+	startNow := make(chan struct{})
 	c := make(chan struct{})
 
 	sender := func() {
-		defer wg.Done()
-		<-begin
-		for i := 0; i < b.N; i++ {
+		<-startNow
+		for range b.N {
 			c <- token
 		}
 	}
 
 	receiver := func() {
-		defer wg.Done()
-		<-begin
-		for i := 0; i < b.N; i++ {
+		<-startNow
+		for range b.N {
 			<-c
 		}
 	}
 
-	wg.Add(2)
-	go sender()
-	go receiver()
+	wg.Go(sender)
+	wg.Go(receiver)
+
 	b.StartTimer()
-	close(begin)
+	close(startNow)
+
 	wg.Wait()
 }

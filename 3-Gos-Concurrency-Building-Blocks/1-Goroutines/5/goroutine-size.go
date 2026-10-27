@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+const numGoroutines = 1e6
+
 func main() {
 	memConsumed := func() uint64 {
 		runtime.GC()
@@ -16,15 +18,24 @@ func main() {
 
 	var c <-chan struct{}
 	var wg sync.WaitGroup
-	noop := func() { wg.Done(); <-c }
+	// Done must be called before blocking on c: the goroutines have to stay
+	// parked on a nil channel while memAfter is measured. They never finish --
+	// this is a deliberate leak, see README.md.
+	noop := func() {
+		wg.Done()
+		<-c
+	}
 
-	const numGoroutines = 1e6
-	wg.Add(numGoroutines)
-	before := memConsumed()
-	for i := numGoroutines; i > 0; i-- {
+	memBefore := memConsumed()
+
+	wg.Add(int(numGoroutines))
+	for range int(numGoroutines) {
 		go noop()
 	}
+
 	wg.Wait()
-	after := memConsumed()
-	fmt.Printf("%.3fKb\n", float64(after-before)/numGoroutines/1000)
+
+	memAfter := memConsumed()
+
+	fmt.Printf("%.3fKB\n", float64(memAfter-memBefore)/numGoroutines/1024)
 }
