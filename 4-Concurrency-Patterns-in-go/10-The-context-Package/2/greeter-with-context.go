@@ -12,25 +12,21 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		fmt.Println("Calling printGreeting")
 		if err := printGreeting(ctx); err != nil {
 			fmt.Printf("cannot print greeting: %v\n", err)
 			fmt.Println("Calling cancel explicitly from the top.")
 			cancel() // will cancel all of main() and its sub-goroutines
 		}
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		fmt.Println("Calling printFarewell")
 		if err := printFarewell(ctx); err != nil {
 			fmt.Printf("cannot print farewell: %v\n", err)
 		}
-	}()
+	})
 
 	wg.Wait()
 }

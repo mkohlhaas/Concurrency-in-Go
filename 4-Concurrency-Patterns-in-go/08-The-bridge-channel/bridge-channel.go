@@ -13,7 +13,7 @@ func orDone[T any](done <-chan struct{}, c <-chan T) <-chan T {
 			case <-done:
 				return
 			case v, ok := <-c:
-				if ok == false {
+				if !ok {
 					return
 				}
 				select {
@@ -36,7 +36,7 @@ func bridge[T any](done <-chan struct{}, chanStream <-chan <-chan T) <-chan T {
 			case <-done:
 				return
 			case maybeStream, ok := <-chanStream:
-				if ok == false {
+				if !ok {
 					return
 				}
 				stream = maybeStream
@@ -61,7 +61,7 @@ func main() {
 		cs := make(chan (<-chan string))
 		go func() {
 			defer close(cs)
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				stream := make(chan string, 1)
 				stream <- fmt.Sprintf("%d", i)
 				close(stream)
@@ -74,5 +74,6 @@ func main() {
 	for v := range bridge(done, chanStream) {
 		fmt.Printf("%v ", v)
 	}
+
 	fmt.Println()
 }

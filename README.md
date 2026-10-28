@@ -6,7 +6,7 @@ For errata and more information, please refer to the book's hub at [Errata for C
 
 ## Notes on `init()` in Go
 
-Yes, `init()` is automatically called by the Go runtime.
+`init()` is automatically called by the Go runtime.
 
 - **Automatic execution**: `init()` functions have no parameters or return values and cannot be called manually. The runtime executes them during package initialization, before `main()` runs or before any tests/benchmarks are executed.
 - **Timing**: Since test files can be in `package main`, `init()` will run when the test binary initializes the package. It can start daemons/goroutines, and synchronization primitives like `sync.WaitGroup` can block package initialization until ready.
