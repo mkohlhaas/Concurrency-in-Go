@@ -6,13 +6,16 @@ import (
 )
 
 func main() {
+	// or: returns a channel that closes when ANY input channel closes.
 	var or func(channels ...<-chan any) <-chan any
 
 	or = func(channels ...<-chan any) <-chan any {
 		switch len(channels) {
 		case 0:
+			// Nothing to wait on; nil blocks forever (standard).
 			return nil
 		case 1:
+			// One source: pass through unchanged.
 			return channels[0]
 		}
 
@@ -23,11 +26,14 @@ func main() {
 
 			switch len(channels) {
 			case 2:
+				// Wait for either of the two.
 				select {
 				case <-channels[0]:
 				case <-channels[1]:
 				}
 			default:
+				// 3+: select first 3 directly; fold rest via recursion.
+				// orDone is appended so the recursive call terminates.
 				select {
 				case <-channels[0]:
 				case <-channels[1]:
@@ -40,6 +46,7 @@ func main() {
 		return orDone
 	}
 
+	// sig: creates a channel that closes after the given delay.
 	sig := func(after time.Duration) <-chan any {
 		c := make(chan any)
 		go func() {
