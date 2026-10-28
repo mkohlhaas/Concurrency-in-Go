@@ -27,7 +27,7 @@ func take[T any](done <-chan struct{}, valueStream <-chan T, num int) <-chan T {
 	takeStream := make(chan T)
 	go func() {
 		defer close(takeStream)
-		for i := 0; i < num; i++ {
+		for range num {
 			select {
 			case <-done:
 				return
@@ -72,8 +72,10 @@ func primeFinder(done <-chan struct{}, intStream <-chan int) <-chan int {
 func fanIn[T any](done <-chan struct{}, channels ...<-chan T) <-chan T {
 	multiplexedStream := make(chan T)
 	var wg sync.WaitGroup
+
 	multiplex := func(c <-chan T) {
 		defer wg.Done()
+
 		for i := range c {
 			select {
 			case <-done:
@@ -104,18 +106,21 @@ func main() {
 
 	randInt := func() int { return rand.Intn(500000000) }
 
+	// start prime finders
 	randIntStream := toInt(done, repeatFn(done, randInt))
 	numFinders := runtime.NumCPU()
 	fmt.Printf("Spinning up %d prime finders.\n", numFinders)
 
 	finders := make([]<-chan int, numFinders)
-	for i := 0; i < numFinders; i++ {
+	for i := range numFinders {
 		finders[i] = primeFinder(done, randIntStream)
 	}
 
+	// print prime numbers
+	const numPrimes = 10
 	fmt.Println("Primes:")
-	for prime := range take(done, fanIn(done, finders...), 10) {
-		fmt.Printf("\t%v\n", prime)
+	for prime := range take(done, fanIn(done, finders...), numPrimes) {
+		fmt.Printf("%v\n", prime)
 	}
 
 	fmt.Printf("Search took: %v\n", time.Since(start))
