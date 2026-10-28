@@ -13,6 +13,7 @@ func main() {
 		go func() {
 			defer fmt.Println("newRandStream closure exited.")
 			defer close(randStream)
+
 			for {
 				select {
 				case randStream <- rand.Int():
@@ -27,13 +28,16 @@ func main() {
 
 	done := make(chan struct{})
 	randStream := newRandStream(done)
-	fmt.Println("3 random ints:")
-	for i := 1; i <= 3; i++ {
+	fmt.Println("5 random ints:")
+	for i := range 5 {
 		fmt.Printf("%d: %d\n", i, <-randStream)
 	}
+
+	// shutdown the random stream goroutine (no leak)
 	close(done)
 
 	// Simulate ongoing work
-	time.Sleep(1 * time.Second)
-	fmt.Println("... had more work to do in main function.")
+	time.Sleep(time.Second)
+
+	fmt.Println("Done!")
 }

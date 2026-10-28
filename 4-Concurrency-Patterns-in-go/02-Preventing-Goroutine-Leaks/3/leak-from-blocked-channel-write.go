@@ -12,6 +12,7 @@ func main() {
 		go func() {
 			defer fmt.Println("newRandStream closure exited.")
 			defer close(randStream)
+
 			for {
 				randStream <- rand.Int()
 			}
@@ -21,8 +22,15 @@ func main() {
 	}
 
 	randStream := newRandStream()
-	fmt.Println("3 random ints:")
-	for i := 1; i <= 3; i++ {
+
+	fmt.Println("5 random ints:")
+	for i := range 5 {
 		fmt.Printf("%d: %d\n", i, <-randStream)
 	}
+
+	// randStream is never shut down
+
+	// for i := range randStream {
+	// 	fmt.Printf("%d\n", i)
+	// }
 }
