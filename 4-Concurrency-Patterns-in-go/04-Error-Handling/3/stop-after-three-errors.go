@@ -11,7 +11,7 @@ type Result struct {
 }
 
 func main() {
-	checkStatus := func(done <-chan any, urls ...string) <-chan Result {
+	checkStatus := func(urls ...string) <-chan Result {
 		results := make(chan Result)
 
 		go func() {
@@ -21,23 +21,17 @@ func main() {
 				var result Result
 				resp, err := http.Get(url)
 				result = Result{Error: err, Response: resp}
-				select {
-				case <-done:
-					return
-				case results <- result:
-				}
+				results <- result
 			}
 		}()
 
 		return results
 	}
 
-	done := make(chan any)
-	defer close(done)
-
 	errCount := 0
 	urls := []string{"a", "https://www.google.com", "https://www.bawue.de", "b", "c", "d", "https://www.bawue.de"}
-	for result := range checkStatus(done, urls...) {
+
+	for result := range checkStatus(urls...) {
 		if result.Error != nil {
 			fmt.Printf("error: %v\n", result.Error)
 			errCount++
