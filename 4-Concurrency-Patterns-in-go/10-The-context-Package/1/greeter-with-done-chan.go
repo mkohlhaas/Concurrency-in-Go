@@ -9,24 +9,37 @@ import (
 func main() {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
-	defer close(done)
 
+	// Cancel after 2 seconds — before the 5-second locale lookups finish.
+	// Comment out to not cancel.
+	go func() {
+		time.Sleep(2 * time.Second)
+		close(done)
+	}()
+
+	// Greeting //
 	wg.Go(func() {
 		if err := printGreeting(done); err != nil {
-			fmt.Printf("%v", err)
+			fmt.Printf("greeting: %v\n", err)
 			return
 		}
 	})
 
+	// Farewell //
 	wg.Go(func() {
 		if err := printFarewell(done); err != nil {
-			fmt.Printf("%v", err)
+			fmt.Printf("farewell: %v\n", err)
 			return
 		}
 	})
 
 	wg.Wait()
+	fmt.Println("both tasks finished")
 }
+
+// -------- //
+// Greeting //
+// -------- //
 
 func printGreeting(done <-chan struct{}) error {
 	greeting, err := genGreeting(done)
@@ -34,15 +47,6 @@ func printGreeting(done <-chan struct{}) error {
 		return err
 	}
 	fmt.Printf("%s world!\n", greeting)
-	return nil
-}
-
-func printFarewell(done <-chan struct{}) error {
-	farewell, err := genFarewell(done)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s world!\n", farewell)
 	return nil
 }
 
@@ -56,6 +60,19 @@ func genGreeting(done <-chan struct{}) (string, error) {
 	return "", fmt.Errorf("unsupported locale")
 }
 
+// -------- //
+// Farewell //
+// -------- //
+
+func printFarewell(done <-chan struct{}) error {
+	farewell, err := genFarewell(done)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s world!\n", farewell)
+	return nil
+}
+
 func genFarewell(done <-chan struct{}) (string, error) {
 	switch locale, err := locale(done); {
 	case err != nil:
@@ -66,6 +83,11 @@ func genFarewell(done <-chan struct{}) (string, error) {
 	return "", fmt.Errorf("unsupported locale")
 }
 
+// ------ //
+// Locale //
+// ------ //
+
+// can be cancelled via done channel
 func locale(done <-chan struct{}) (string, error) {
 	select {
 	case <-done:

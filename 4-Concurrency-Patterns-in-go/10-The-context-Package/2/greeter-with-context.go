@@ -12,6 +12,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Greeting //
+	// comment out to make output cleaner, run only Farewell scenario
 	wg.Go(func() {
 		fmt.Println("Calling printGreeting")
 		if err := printGreeting(ctx); err != nil {
@@ -21,6 +23,8 @@ func main() {
 		}
 	})
 
+	// Farewell //
+	// comment out to make output cleaner, run only Greeting scenario
 	wg.Go(func() {
 		fmt.Println("Calling printFarewell")
 		if err := printFarewell(ctx); err != nil {
@@ -30,6 +34,10 @@ func main() {
 
 	wg.Wait()
 }
+
+// -------- //
+// Greeting //
+// -------- //
 
 func printGreeting(ctx context.Context) error {
 	fmt.Println("  Calling genGreeting")
@@ -41,18 +49,9 @@ func printGreeting(ctx context.Context) error {
 	return nil
 }
 
-func printFarewell(ctx context.Context) error {
-	fmt.Println("  Calling genFarewell")
-	farewell, err := genFarewell(ctx)
-	if err != nil {
-		fmt.Println("Error in printFarewell")
-		return err
-	}
-	fmt.Printf("%s world!\n", farewell)
-	return nil
-}
-
+// adds 2 second timeout to context
 func genGreeting(ctx context.Context) (string, error) {
+	// typical pattern: replace the context with a new version
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second) // this will cancel in locale() -> ctx.Done()
 	defer cancel()
 
@@ -67,6 +66,22 @@ func genGreeting(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("unsupported locale")
 }
 
+// -------- //
+// Farewell //
+// -------- //
+
+// context is unchanged
+func printFarewell(ctx context.Context) error {
+	fmt.Println("  Calling genFarewell")
+	farewell, err := genFarewell(ctx)
+	if err != nil {
+		fmt.Println("Error in printFarewell")
+		return err
+	}
+	fmt.Printf("%s world!\n", farewell)
+	return nil
+}
+
 func genFarewell(ctx context.Context) (string, error) {
 	fmt.Println("    Calling locale in genFarewell")
 	switch locale, err := locale(ctx); {
@@ -79,13 +94,18 @@ func genFarewell(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("unsupported locale")
 }
 
+// ------ //
+// Locale //
+// ------ //
+
+// 10 second timeout
 func locale(ctx context.Context) (string, error) {
 	fmt.Println("      locale got called")
 	select {
 	case <-ctx.Done(): // catching cancel() in genGreeting or cancel() called from the top
 		fmt.Println("\nctx.Done in locale")
 		return "", ctx.Err()
-	case <-time.After(60 * time.Second): // set timeout to one second to see a difference!!!
+	case <-time.After(10 * time.Second): // set timeout to one second to see a difference!!!
 		fmt.Println("timed out in locale")
 	}
 	return "EN/US", nil

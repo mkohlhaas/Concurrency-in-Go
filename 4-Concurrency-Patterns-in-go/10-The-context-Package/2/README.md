@@ -128,6 +128,35 @@ func doHeavyWork(ctx context.Context) {
 }
 ```
 
+## Code Example: `greeter-with-context.go`
+
+The file `greeter-with-context.go` demonstrates **coordinated cancellation across concurrent goroutines** using a shared context tree.
+
+### What it does
+
+1. `main` creates a cancellable root context with `context.WithCancel(context.Background())` and defers `cancel()` to avoid leaking it.
+2. Two goroutines run concurrently via `sync.WaitGroup`:
+   - `printGreeting(ctx)` — resolves a greeting
+   - `printFarewell(ctx)` — resolves a farewell
+3. Each `gen*` helper creates its own child context with `context.WithTimeout(ctx, 2*time.Second)`, so work is bounded to 2 seconds.
+4. `locale(ctx)` blocks on a `select` between `ctx.Done()` and a 60-second timer, making the operation genuinely cancellable.
+5. If `printGreeting` fails (its 2-second timeout fires first), it calls `cancel()` explicitly — this cancels the top-level context, which propagates **DOWN** the tree and unblocks `locale` inside `printFarewell` too, so no goroutine keeps working pointlessly.
+
+### What it demonstrates
+
+| Concept | How the code shows it |
+|---|---|
+| **Manual cancellation** | `context.WithCancel` + explicit `cancel()` call when `printGreeting` errors |
+| **Cancellation propagates DOWN** | Cancelling the root context closes child contexts' `Done` channels, so `locale` in `printFarewell` returns early via `ctx.Err()` |
+| **Context leak prevention** | `defer cancel()` in both `main` and each `gen*` function |
+| **Making work cancellable** | `locale` selects on `<-ctx.Done()` instead of sleeping blindly |
+| **Bounded work per branch** | `context.WithTimeout(ctx, 2*time.Second)` caps each greeting/farewell resolution |
+| **Shared context across goroutines** | Both goroutines receive the same `ctx`, so one branch's failure can signal the other to stop |
+
+### Expected output
+
+After about 2 seconds both timeouts fire. `printGreeting`'s error path calls `cancel()`, and both goroutines terminate — neither waits the full 60 seconds inside `locale`.
+
 ## Golden Rules of Go Context
 
 - **Parameter placement**: Always pass `ctx context.Context` as the very first parameter of a function. Do not store it inside a struct unless implementing exceptional library patterns. [1](https://go.dev/blog/context-and-structs), [2](https://pkg.go.dev/context), [3](https://www.youtube.com/watch?v=h2RdcrMLQAo&t=858)
