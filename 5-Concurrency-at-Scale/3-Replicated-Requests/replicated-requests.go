@@ -11,34 +11,39 @@ func main() {
 	doWork := func(done <-chan any, id int, wg *sync.WaitGroup, result chan<- int) {
 		started := time.Now()
 		defer wg.Done()
+
 		// Simulate random load
 		simulatedLoadTime := time.Duration(1+rand.Intn(5)) * time.Second
 		select {
 		case <-done:
 		case <-time.After(simulatedLoadTime):
 		}
+
+		// send result (= goroutine id)
 		select {
 		case <-done:
 		case result <- id:
 		}
 
-		took := time.Since(started)
 		// Display how long handlers would have taken
-		if took < simulatedLoadTime {
-			took = simulatedLoadTime
-		}
-		fmt.Printf("%v took %v\n", id, took)
+		took := max(time.Since(started), simulatedLoadTime)
+		fmt.Printf("goroutine %v took %v\n", id, took)
 	}
 
 	done := make(chan any)
-	result := make(chan int)
+	results := make(chan int)
 	var wg sync.WaitGroup
 	wg.Add(10)
-	for i := 0; i < 10; i++ {
-		go doWork(done, i, &wg, result)
+
+	// Start 10 goroutines using the same results channel.
+	// All goroutines will finish.
+	for i := range 10 {
+		go doWork(done, i, &wg, results)
 	}
-	firstReturned := <-result
+
+	firstResult := <-results
 	close(done)
+
 	wg.Wait()
-	fmt.Printf("Received first answer from #%v.\n", firstReturned)
+	fmt.Printf("Received first answer from #%v.\n", firstResult)
 }
