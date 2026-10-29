@@ -40,13 +40,13 @@ func runJob(id string) error {
 	if err != nil {
 		return IntermediateErr{wrapError(
 			err,
-			"cannot run job %q: requisite binaries not available",
+			"cannot run job %q: requisite binaries not available", // this is the slight improvement
 			id,
 		)}
-	} else if isExecutable == false {
+	} else if !isExecutable {
 		return wrapError(
 			nil,
-			"cannot run job %q: requisite binaries are not executable",
+			"cannot run job %q: requisite binaries are not executable", // this is the slight improvement
 			id,
 		)
 	}
@@ -63,9 +63,9 @@ type LowLevelErr struct {
 func isGloballyExec(path string) (bool, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return false, LowLevelErr{(wrapError(err, err.Error()))}
+		return false, LowLevelErr{wrapError(err, "%s", err.Error())}
 	}
-	return info.Mode().Perm()&0100 == 0100, nil
+	return info.Mode().Perm()&0o100 == 0o100, nil
 }
 
 func handleError(key int, err error, message string) {
