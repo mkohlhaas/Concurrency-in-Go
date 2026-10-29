@@ -6,17 +6,18 @@ import (
 )
 
 func main() {
-	doWork := func(done <-chan any) (<-chan any, <-chan int) {
-		heartbeatStream := make(chan any, 1)
+	doWork := func(done <-chan struct{}) (<-chan struct{}, <-chan int) {
+		heartbeatStream := make(chan struct{}, 1)
 		workStream := make(chan int)
+
 		go func() {
 			defer close(heartbeatStream)
 			defer close(workStream)
 
-			for i := 0; i < 10; i++ {
+			for range 10 {
 				select {
 				case heartbeatStream <- struct{}{}:
-				default:
+				default: // consumer hasn't read previous pulse; drop this one rather than block
 				}
 
 				select {
@@ -30,23 +31,24 @@ func main() {
 		return heartbeatStream, workStream
 	}
 
-	done := make(chan any)
+	done := make(chan struct{})
 	defer close(done)
 
 	heartbeat, results := doWork(done)
+
 	for {
 		select {
 		case _, ok := <-heartbeat:
 			if ok {
 				fmt.Println("pulse")
 			} else {
-				return
+				return // channel closed by producer's defer
 			}
 		case r, ok := <-results:
 			if ok {
 				fmt.Printf("results %v\n", r)
 			} else {
-				return
+				return // channel closed by producer's defer
 			}
 		}
 	}
