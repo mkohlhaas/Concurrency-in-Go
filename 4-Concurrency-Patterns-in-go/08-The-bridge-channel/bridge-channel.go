@@ -28,28 +28,30 @@ func orDone[T any](done <-chan struct{}, c <-chan T) <-chan T {
 
 func bridge[T any](done <-chan struct{}, chanStream <-chan <-chan T) <-chan T {
 	valStream := make(chan T)
+
 	go func() {
 		defer close(valStream)
+
 		for {
-			var stream <-chan T
 			select {
 			case <-done:
 				return
 			case maybeStream, ok := <-chanStream:
 				if !ok {
-					return
+					return // channel chanStream has been closed
 				}
-				stream = maybeStream
-			}
-			for val := range orDone(done, stream) {
-				select {
-				case <-done:
-					return
-				case valStream <- val:
+				for val := range orDone(done, maybeStream) {
+					// Write Select
+					select {
+					case <-done:
+						return
+					case valStream <- val:
+					}
 				}
 			}
 		}
 	}()
+
 	return valStream
 }
 
@@ -59,8 +61,12 @@ func main() {
 
 	chanStream := func() <-chan <-chan string {
 		cs := make(chan (<-chan string))
+
 		go func() {
 			defer close(cs)
+
+			// create 10 streams, write a value in it, and write
+			// the streams in a stream of streams (the return value)
 			for i := range 10 {
 				stream := make(chan string, 1)
 				stream <- fmt.Sprintf("%d", i)
@@ -68,6 +74,7 @@ func main() {
 				cs <- stream
 			}
 		}()
+
 		return cs
 	}()
 

@@ -46,7 +46,7 @@ func take[T any](done <-chan struct{}, valueStream <-chan T, num int) <-chan T {
 	takeStream := make(chan T)
 	go func() {
 		defer close(takeStream)
-		for i := 0; i < num; i++ {
+		for range num {
 			select {
 			case <-done:
 				return
@@ -63,6 +63,6 @@ func performWrite(b *testing.B, writer io.Writer) {
 
 	b.ResetTimer()
 	for bt := range take(done, repeat(done, byte(0)), b.N) {
-		writer.Write([]byte{bt})
+		_, _ = writer.Write([]byte{bt})
 	}
 }
