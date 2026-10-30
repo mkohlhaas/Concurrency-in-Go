@@ -3,14 +3,25 @@ package main
 import (
 	"log"
 	"os"
+	"sync/atomic"
 	"time"
 )
 
+// startGoroutineFn is the contract for anything the steward can watch over:
+// it is handed a done channel to stop on and the interval at which it is
+// expected to report in, and it returns the channel it reports on.
+//
+// A goroutine that follows this contract can be wrapped in newSteward without
+// the steward knowing anything about what the work actually is.
 type startGoroutineFn func(
 	done <-chan struct{},
 	pulseInterval time.Duration,
 ) (heartbeat <-chan struct{})
 
+// newSteward wraps s in a supervisor. It starts the ward, watches the ward's
+// heartbeat channel, and replaces the ward whenever the ward stops proving it
+// is alive. The returned function has the same signature as the thing it wraps,
+// so a steward is itself monitorable: stewards can be stacked.
 func newSteward(
 	timeout time.Duration,
 	s startGoroutineFn,
@@ -18,44 +29,85 @@ func newSteward(
 	return func(
 		done <-chan struct{},
 		pulseInterval time.Duration,
-	) (<-chan struct{}) {
+	) <-chan struct{} {
 		heartbeat := make(chan struct{})
+
 		go func() {
 			defer close(heartbeat)
 
-			var wardDone chan struct{}
-			var wardHeartbeat <-chan struct{}
+			// The steward keeps its own done channel for the ward, so that it can
+			// kill and replace the ward without shutting itself down.
+			var (
+				wardDone      chan struct{}
+				wardHeartbeat <-chan struct{}
+			)
 			startWard := func() {
 				wardDone = make(chan struct{})
+				// Give the ward half the timeout, so it gets two chances to report
+				// in before the steward gives up on it.
 				wardHeartbeat = s(wardDone, timeout/2)
 			}
-			startWard()
-			pulse := time.Tick(pulseInterval)
-
-		monitorLoop:
-			for {
-				timeoutSignal := time.After(timeout)
-
+			killWard := func() { close(wardDone) }
+			// awaitWardStop blocks until the ward has actually stopped (a well-behaved
+			// ward closes its heartbeat channel on the way out) or the grace period
+			// expires, so that a slow ward cannot hold the steward hostage.
+			awaitWardStop := func() {
+				grace := time.After(timeout)
 				for {
 					select {
-					case <-pulse:
+					case _, ok := <-wardHeartbeat:
+						if !ok {
+							return
+						}
+					case <-grace:
+						return
+					}
+				}
+			}
+
+			startWard()
+
+			pulse := time.NewTicker(pulseInterval)
+			defer pulse.Stop()
+
+			for {
+				// One timeout per ward generation: the clock starts when the ward
+				// starts (or reports in) and is only reset by the ward itself.
+				timeoutSignal := time.After(timeout)
+
+			wardCheckin:
+				for {
+					select {
+					case <-pulse.C:
+						// Report our own health upstream. Never block on it: whoever
+						// is watching us may have stopped listening.
 						select {
 						case heartbeat <- struct{}{}:
 						default:
 						}
-					case <-wardHeartbeat:
-						continue monitorLoop
+					case _, ok := <-wardHeartbeat:
+						if !ok {
+							// A closed heartbeat channel means the ward returned.
+							// There is nothing to wait for, so replace it at once.
+							log.Println("steward: ward exited; restarting")
+							killWard()
+							awaitWardStop()
+							startWard()
+							break wardCheckin
+						}
+						// The ward is alive: reset the timeout and keep waiting.
+						break wardCheckin
 					case <-timeoutSignal:
+						// Silence for a whole timeout: the ward is deadlocked or
+						// otherwise stuck. Kill it and start a fresh one.
 						log.Println("steward: ward unhealthy; restarting")
-						if wardDone != nil {
-							close(wardDone)
-						}
+						killWard()
+						awaitWardStop()
 						startWard()
-						continue monitorLoop
+						break wardCheckin
 					case <-done:
-						if wardDone != nil {
-							close(wardDone)
-						}
+						killWard()
+						awaitWardStop()
 						return
 					}
 				}
@@ -70,45 +122,87 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.Ltime | log.LUTC)
 
+	const (
+		timeout       = 2 * time.Second // how long a ward may stay silent
+		pulseInterval = 2 * time.Second // how often the steward reports to us
+	)
+
+	// doWorkFn is the ward. It reports in every pulseInterval, as the steward
+	// asked it to. To make the pattern visible, the first two wards are scripted
+	// to fail in the two ways a ward can fail:
+	//
+	//	ward #1: deadlocks - it stops reporting in but never returns
+	//	ward #2: crashes   - it returns, closing its heartbeat channel
+	//	ward #3: is healthy until we shut everything down
+	//
+	// A real ward would be the same code every time; the fault is injected here
+	// only so the steward has something to heal.
+	var wardID atomic.Int64
+
 	doWorkFn := func(
 		done <-chan struct{},
-		_ time.Duration,
-	) (<-chan struct{}) {
-		log.Println("ward: restarting")
+		pulseInterval time.Duration,
+	) <-chan struct{} {
+		id := wardID.Add(1)
+		log.Printf("ward #%d: starting; reporting in every %v", id, pulseInterval)
+
 		heartbeat := make(chan struct{})
 		go func() {
 			defer close(heartbeat)
 
-			localDone := make(chan struct{})
-			time.AfterFunc(13*time.Second, func() {
-				log.Println("ward: halting by steward request")
-				close(localDone)
-			})
+			report := time.NewTicker(pulseInterval)
+			defer report.Stop()
 
-			for i := 0; i < 10; i++ {
+			for pulses := 1; ; pulses++ {
+				// Report in. Select on done as well, so the steward can always
+				// interrupt us, even if nobody is reading heartbeats right now.
 				select {
 				case heartbeat <- struct{}{}:
-				case <-localDone:
-					return
+					log.Printf("ward #%d: heartbeat %d", id, pulses)
 				case <-done:
+					log.Printf("ward #%d: halting", id)
 					return
 				}
-				time.Sleep(1 * time.Second)
+
+				// Inject this ward's failure, if it has one.
+				switch {
+				case id == 1 && pulses == 3:
+					log.Printf("ward #%d: deadlocked; no longer reporting in", id)
+					<-done // only the steward can get us out of this
+					log.Printf("ward #%d: halting", id)
+					return
+				case id == 2 && pulses == 3:
+					log.Printf("ward #%d: crashed", id)
+					return
+				}
+
+				select {
+				case <-report.C:
+				case <-done:
+					log.Printf("ward #%d: halting", id)
+					return
+				}
 			}
 		}()
 
 		return heartbeat
 	}
 
-	doWorkWithSteward := newSteward(4*time.Second, doWorkFn)
+	// Wrap the ward in a steward. The steward is a startGoroutineFn too, so from
+	// here on it is just another monitored goroutine.
+	doWorkWithSteward := newSteward(timeout, doWorkFn)
 
+	// Give the demo long enough to show both failures and a healthy recovery.
 	done := make(chan struct{})
-	time.AfterFunc(9*time.Second, func() {
+	time.AfterFunc(15*time.Second, func() {
 		log.Println("main: halting steward and ward")
 		close(done)
 	})
 
-	for range doWorkWithSteward(done, 4*time.Second) {
-		log.Println("main: received heartbeat")
+	// The steward closes our channel when it stops, which ends this loop.
+	for range doWorkWithSteward(done, pulseInterval) {
+		log.Println("main: received heartbeat from steward")
 	}
+
+	log.Println("main: done")
 }

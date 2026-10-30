@@ -1,3 +1,3 @@
-module main
+module ward
 
 go 1.27.3
