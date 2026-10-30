@@ -1,4 +1,4 @@
-# Heartbeats — directory 6
+# Heartbeats
 
 Implements a `DoWork` function that streams numbers on `intStream` while
 periodically signaling a `heartbeat` channel on its own interval, honoring a

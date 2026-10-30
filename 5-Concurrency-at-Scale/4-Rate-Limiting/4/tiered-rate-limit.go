@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"golang.org/x/time/rate"
 	"log"
 	"os"
 	"sort"
 	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(20)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer wg.Done()
 			err := apiConnection.ReadFile(context.Background())
@@ -30,7 +31,7 @@ func main() {
 		}()
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer wg.Done()
 			err := apiConnection.ResolveAddress(context.Background())
@@ -48,28 +49,39 @@ func Per(eventCount int, duration time.Duration) rate.Limit {
 	return rate.Every(duration / time.Duration(eventCount))
 }
 
+// ------------- //
+// APIConnection //
+// ------------- //
+
 type APIConnection struct {
 	networkLimit,
 	diskLimit,
 	apiLimit RateLimiter
 }
 
+// Open - Expanding to API, disk and network limits (in comparison to ../3)
 func Open() *APIConnection {
 	return &APIConnection{
+		// each limit is also a MultiLimiter
+		// using Limiters as arguments
 		apiLimit: MultiLimiter(
 			rate.NewLimiter(Per(2, time.Second), 2),
-			rate.NewLimiter(Per(10, time.Minute), 10),
+			rate.NewLimiter(Per(12, time.Minute), 10),
 		),
 		diskLimit: MultiLimiter(
+			// using Limiter as arguments
 			rate.NewLimiter(rate.Limit(1), 1),
 		),
 		networkLimit: MultiLimiter(
+			// using Limiter as arguments
 			rate.NewLimiter(Per(3, time.Second), 3),
 		),
 	}
 }
 
 func (a *APIConnection) ReadFile(ctx context.Context) error {
+	// honor api and disk limits
+	// using multiLimiters as arguments
 	if err := MultiLimiter(a.apiLimit, a.diskLimit).Wait(ctx); err != nil {
 		return err
 	}
@@ -78,13 +90,15 @@ func (a *APIConnection) ReadFile(ctx context.Context) error {
 }
 
 func (a *APIConnection) ResolveAddress(ctx context.Context) error {
-	if err := MultiLimiter(a.apiLimit, a.diskLimit).Wait(ctx); err != nil {
+	// honor api and network limits
+	if err := MultiLimiter(a.apiLimit, a.networkLimit).Wait(ctx); err != nil {
 		return err
 	}
 	// Pretend we do work here
 	return nil
 }
 
+// RateLimiter - multiLimiter is a RateLimiter, limiter is a RateLimiter
 type RateLimiter interface {
 	Wait(context.Context) error
 	Limit() rate.Limit
@@ -94,6 +108,7 @@ type multiLimiter struct {
 	limiters []RateLimiter
 }
 
+// MultiLimiter - can use multiLimiter and Limiter as arguments!
 func MultiLimiter(limiters ...RateLimiter) *multiLimiter {
 	byLimit := func(i, j int) bool {
 		return limiters[i].Limit() < limiters[j].Limit()

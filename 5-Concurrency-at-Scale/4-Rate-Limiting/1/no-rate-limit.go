@@ -16,9 +16,10 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(20)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer wg.Done()
+
 			err := apiConnection.ReadFile(context.Background())
 			if err != nil {
 				log.Printf("cannot ReadFile: %v", err)
@@ -27,9 +28,10 @@ func main() {
 		}()
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer wg.Done()
+
 			err := apiConnection.ResolveAddress(context.Background())
 			if err != nil {
 				log.Printf("cannot ResolveAddress: %v", err)
@@ -41,19 +43,27 @@ func main() {
 	wg.Wait()
 }
 
+// ------------- //
+// APIConnection //
+// ------------- //
+
 type APIConnection struct{}
 
-// constructor
+// Open jconstructor
 func Open() *APIConnection {
 	return &APIConnection{}
 }
 
 func (a *APIConnection) ReadFile(ctx context.Context) error {
 	// Pretend we do work here
+	// ...
+
 	return nil
 }
 
 func (a *APIConnection) ResolveAddress(ctx context.Context) error {
 	// Pretend we do work here
+	// ...
+
 	return nil
 }

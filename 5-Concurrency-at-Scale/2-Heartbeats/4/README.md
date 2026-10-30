@@ -1,4 +1,4 @@
-# Heartbeat + results — test fix (directory 4)
+# Heartbeat + results — test fix
 
 This directory contains a `DoWork` producer and a test for it, plus a benchmark.
 It is part of the Chapter 5 heartbeat sequence (see `../1`, `../2`, `../3`).

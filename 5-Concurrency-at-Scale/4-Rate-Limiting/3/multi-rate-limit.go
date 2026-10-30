@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"golang.org/x/time/rate"
 	"log"
 	"os"
 	"sort"
 	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(20)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer wg.Done()
 			err := apiConnection.ReadFile(context.Background())
@@ -30,7 +31,7 @@ func main() {
 		}()
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer wg.Done()
 			err := apiConnection.ResolveAddress(context.Background())
@@ -44,17 +45,32 @@ func main() {
 	wg.Wait()
 }
 
-func Per(eventCount int, duration time.Duration) rate.Limit {
-	return rate.Every(duration / time.Duration(eventCount))
+// ----------- //
+// RateLimiter //
+// ----------- //
+
+type RateLimiter interface {
+	Wait(context.Context) error
+	Limit() rate.Limit
 }
+
+// ------------- //
+// APIConnection //
+// ------------- //
 
 type APIConnection struct {
 	rateLimiter RateLimiter
 }
 
+// Per : eventCount per duration
+func Per(eventCount int, duration time.Duration) rate.Limit {
+	return rate.Every(duration / time.Duration(eventCount))
+}
+
 func Open() *APIConnection {
 	secondLimit := rate.NewLimiter(Per(2, time.Second), 1)
-	minuteLimit := rate.NewLimiter(Per(12, time.Minute), 5) // burst of 5 per minute
+	minuteLimit := rate.NewLimiter(Per(12, time.Minute), 5) // burst capacity of 5 tokens
+
 	return &APIConnection{
 		rateLimiter: MultiLimiter(secondLimit, minuteLimit),
 	}
@@ -76,10 +92,9 @@ func (a *APIConnection) ResolveAddress(ctx context.Context) error {
 	return nil
 }
 
-type RateLimiter interface {
-	Wait(context.Context) error
-	Limit() rate.Limit
-}
+// ------------ //
+// MultiLimiter //
+// ------------ //
 
 type multiLimiter struct {
 	limiters []RateLimiter
@@ -93,6 +108,15 @@ func MultiLimiter(limiters ...RateLimiter) *multiLimiter {
 	return &multiLimiter{limiters}
 }
 
+// --------------------- //
+// RateLimiter interface //
+// --------------------- //
+
+// Delegation to Limiter
+// Wait()  -> limiter.Wait()
+// Limit() -> limiter.Limit()
+
+// Wait blocks until every child limiter in the pipeline has an available token.
 func (l *multiLimiter) Wait(ctx context.Context) error {
 	for _, limiter := range l.limiters {
 		if err := limiter.Wait(ctx); err != nil {
