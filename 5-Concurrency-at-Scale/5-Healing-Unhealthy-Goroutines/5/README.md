@@ -153,6 +153,25 @@ still leaks. For true Erlang-style "kill and reclaim everything," you need OS
 process boundaries — one worker per process, supervised over IPC — which is far
 heavier than goroutines.
 
+## Go conventions
+
+Go's standard library does not include an Erlang-style supervisor. The idiomatic
+Go building blocks are:
+
+- **`context.Context`** — cooperative cancellation
+- **`golang.org/x/sync/errgroup`** — goroutine groups that cancel on the first error
+
+Many Go projects implement a lightweight steward or supervisor inline rather
+than pulling in a dependency, because Go's model leans toward **explicit**
+cancellation and error propagation rather than implicit "let it crash"
+supervision. Example 5 follows this spirit: it is a small, self-contained
+restart loop built on top of `context.Context`.
+
+For production workloads, a common pattern is to combine `context`/`errgroup`
+with a small restart loop tailored to your failure model — for example, wrapping
+the whole supervision tree in an `errgroup` so that a fatal error at any level
+cancels the entire tree cleanly.
+
 ## Production note
 
 This is a teaching example, not production code. Use `context.Context` for
