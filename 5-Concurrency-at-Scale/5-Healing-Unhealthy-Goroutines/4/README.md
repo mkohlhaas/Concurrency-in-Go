@@ -10,6 +10,26 @@ main
            └── ward   reports every 250 ms
 ```
 
+```mermaid
+flowchart TD
+    main["main"]
+    outer["outer steward<br/>timeout 1.5 s<br/>(its ward is the inner steward)"]
+    inner["inner steward<br/>timeout 0.5 s<br/><span style='color:#c00'>wedges after 3 heartbeats</span>"]
+    ward["ward<br/>reports every 250 ms"]
+
+    main --> outer
+    outer --> inner
+    inner --> ward
+
+    classDef root fill:#f9f,stroke:#333,stroke-width:2px
+    classDef steward fill:#bbf,stroke:#333,stroke-width:2px
+    classDef ward fill:#bfb,stroke:#333,stroke-width:2px
+
+    class main root
+    class outer,inner steward
+    class ward ward
+```
+
 The stack works because `newSteward` returns a `startGoroutineFn`: the outer steward neither knows nor cares that
 the thing it supervises is itself a steward.
 
