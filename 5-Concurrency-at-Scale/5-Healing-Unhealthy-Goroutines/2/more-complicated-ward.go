@@ -13,6 +13,10 @@ type startGoroutineFn func(
 	pulseInterval time.Duration,
 ) (heartbeat <-chan struct{}, results <-chan error)
 
+// ------- //
+// Steward //
+// ------- //
+
 func newSteward(
 	timeout time.Duration,
 	s startGoroutineFn,
@@ -32,6 +36,7 @@ func newSteward(
 			var wardHeartbeat <-chan struct{}
 			var wardResults <-chan error
 			startWard := func() {
+				log.Println("steward: starting ward")
 				wardDone = make(chan struct{})
 				wardHeartbeat, wardResults = s(wardDone, timeout/2)
 			}
@@ -60,6 +65,7 @@ func newSteward(
 						startWard()
 						continue monitorLoop
 					case <-done:
+						log.Println("steward: received done, halting ward")
 						if wardDone != nil {
 							close(wardDone)
 						}
@@ -77,6 +83,10 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.Ltime | log.LUTC)
 
+	// ---- //
+	// Ward //
+	// ---- //
+
 	doWorkFn := func(
 		done <-chan struct{},
 		_ time.Duration,
@@ -89,60 +99,87 @@ func main() {
 			defer close(results)
 
 			localDone := make(chan struct{})
-			time.AfterFunc(13*time.Second, func() {
-				log.Println("ward: halting by steward request")
+			time.AfterFunc(20*time.Second, func() {
+				log.Println("ward: halting by steward request (localDone)")
 				close(localDone)
 			})
 
 			for range 10 {
+				log.Println("ward: about to send heartbeat")
 				select {
 				case heartbeat <- struct{}{}:
+					log.Println("ward: sent heartbeat")
 				case <-localDone:
+					log.Println("ward: received localDone, halting")
 					return
 				case <-done:
+					log.Println("ward: received done, halting")
 					return
 				}
-				time.Sleep(1 * time.Second)
+				select {
+				case <-time.After(1 * time.Second):
+				case <-localDone:
+					log.Println("ward: received localDone during sleep, halting")
+					return
+				case <-done:
+					log.Println("ward: received done during sleep, halting")
+					return
+				}
 			}
 
 			for i := range 10 {
+				log.Println("ward: about to send error")
 				select {
 				case results <- fmt.Errorf("error from iteration %v", i):
+					log.Println("ward: sent error")
 				case <-localDone:
+					log.Println("ward: received localDone, halting")
 					return
 				case <-done:
+					log.Println("ward: received done, halting")
 					return
 				}
-				time.Sleep(1 * time.Second)
+				select {
+				case <-time.After(1 * time.Second):
+				case <-localDone:
+					log.Println("ward: received localDone during sleep, halting")
+					return
+				case <-done:
+					log.Println("ward: received done during sleep, halting")
+					return
+				}
 			}
 		}()
 
 		return heartbeat, results
 	}
 
-	doWorkWithSteward := newSteward(4*time.Second, doWorkFn)
+	doWorkWithSteward := newSteward(25*time.Second, doWorkFn)
 
 	done := make(chan struct{})
-	time.AfterFunc(9*time.Second, func() {
+	time.AfterFunc(3*time.Second, func() {
 		log.Println("main: halting steward and ward")
 		close(done)
 	})
 
 	heartbeatStream, resultsStream := doWorkWithSteward(done, 4*time.Second)
-	for {
+	stop := false
+	for !stop {
 		select {
 		case _, ok := <-heartbeatStream:
 			if !ok {
-				return
+				stop = true
+			} else {
+				log.Println("main: received heartbeat")
 			}
-			log.Println("main: received heartbeat")
 		case err, ok := <-resultsStream:
 			if !ok {
-				return
-			}
-			if err != nil {
+				stop = true
+			} else if err != nil {
 				log.Printf("main: received error: %v\n", err)
 			}
 		}
 	}
+	// Give the ward a moment to react to done before main exits.
+	time.Sleep(2 * time.Second)
 }

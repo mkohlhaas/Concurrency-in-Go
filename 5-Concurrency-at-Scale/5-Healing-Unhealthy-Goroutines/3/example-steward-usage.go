@@ -107,7 +107,7 @@ func main() {
 	doWorkWithSteward := newSteward(4*time.Second, doWork) // 4 sec. = time given the ward to send heartbeats
 
 	done := make(chan any)
-	time.AfterFunc(1*time.Minute, func() { // shutting everything down after a minute
+	time.AfterFunc(20*time.Second, func() { // shutting everything down after a minute
 		log.Println("main: halting ward and steward.")
 		close(done)
 	})
