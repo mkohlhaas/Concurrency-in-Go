@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"sync/atomic"
 	"time"
 )
@@ -17,6 +19,16 @@ type startGoroutineFn func(
 	done <-chan struct{},
 	pulseInterval time.Duration,
 ) (heartbeat <-chan struct{})
+
+// logGoroutines logs who is doing what, plus a snapshot of how many goroutines
+// exist at that moment, the caller included.
+//
+// The count is only a snapshot: a goroutine that has returned but has not been
+// reaped yet is still counted, so a restart boundary can briefly show one more
+// goroutine than the steady state.
+func logGoroutines(who, format string, args ...any) {
+	log.Printf("%s: %s (goroutines = %d)", who, fmt.Sprintf(format, args...), runtime.NumGoroutine())
+}
 
 // newSteward wraps s in a supervisor. It starts the ward, watches the ward's
 // heartbeat channel, and replaces the ward whenever the ward stops proving it
@@ -66,6 +78,7 @@ func newSteward(
 			}
 
 			startWard()
+			logGoroutines("steward", "started; watching ward")
 
 			pulse := time.NewTicker(pulseInterval)
 			defer pulse.Stop()
@@ -93,6 +106,7 @@ func newSteward(
 							killWard()
 							awaitWardStop()
 							startWard()
+							logGoroutines("steward", "ward replaced")
 							break wardCheckin
 						}
 						// The ward is alive: reset the timeout and keep waiting.
@@ -100,14 +114,16 @@ func newSteward(
 					case <-timeoutSignal:
 						// Silence for a whole timeout: the ward is deadlocked or
 						// otherwise stuck. Kill it and start a fresh one.
-						log.Println("steward: ward unhealthy; restarting")
+						logGoroutines("steward", "ward unhealthy; restarting")
 						killWard()
 						awaitWardStop()
 						startWard()
+						logGoroutines("steward", "ward replaced")
 						break wardCheckin
 					case <-done:
 						killWard()
 						awaitWardStop()
+						logGoroutines("steward", "ward stopped; returning")
 						return
 					}
 				}
@@ -121,6 +137,8 @@ func newSteward(
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.Ltime | log.LUTC)
+
+	logGoroutines("main", "starting")
 
 	const (
 		timeout       = 2 * time.Second // how long a ward may stay silent
@@ -195,14 +213,22 @@ func main() {
 	// Give the demo long enough to show both failures and a healthy recovery.
 	done := make(chan struct{})
 	time.AfterFunc(15*time.Second, func() {
-		log.Println("main: halting steward and ward")
+		// This callback runs in its own goroutine, so the count below is one
+		// higher than the steady state: main + steward + ward + the timer.
+		logGoroutines("main", "halting steward and ward")
 		close(done)
 	})
 
 	// The steward closes our channel when it stops, which ends this loop.
-	for range doWorkWithSteward(done, pulseInterval) {
+	heartbeat := doWorkWithSteward(done, pulseInterval)
+	// The steward starts the ward on its own goroutine, so this count can read 2
+	// (ward not started yet) or 3. The steward logs again right after startWard,
+	// where the ward goroutine is guaranteed to exist.
+	logGoroutines("main", "steward started")
+
+	for range heartbeat {
 		log.Println("main: received heartbeat from steward")
 	}
 
-	log.Println("main: done")
+	logGoroutines("main", "done")
 }
