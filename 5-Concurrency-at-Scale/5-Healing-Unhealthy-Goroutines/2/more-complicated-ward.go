@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// returns heartbeat channel and results channel
 type startGoroutineFn func(
 	done <-chan struct{},
 	pulseInterval time.Duration,
@@ -93,7 +94,7 @@ func main() {
 				close(localDone)
 			})
 
-			for i := 0; i < 10; i++ {
+			for range 10 {
 				select {
 				case heartbeat <- struct{}{}:
 				case <-localDone:
@@ -104,7 +105,7 @@ func main() {
 				time.Sleep(1 * time.Second)
 			}
 
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				select {
 				case results <- fmt.Errorf("error from iteration %v", i):
 				case <-localDone:

@@ -24,7 +24,7 @@ visible in the log.
 | **The Ward** (`doWorkFn`) | The worker goroutine executing the actual task. To prove it is still alive and healthy, it is responsible for periodically sending a blank struct (`struct{}{}`) down its heartbeat channel. |
 
 The steward is a `startGoroutineFn` itself, so it is monitorable in exactly the same way as the thing it wraps —
-stewards can be stacked.
+stewards can be stacked!
 
 ## Sequence diagram
 
@@ -108,14 +108,30 @@ How to read it:
 ### 1. Defining the signature
 
 ```go
+// heartbeat is the receive side of the channel a goroutine uses to prove it is
+// still alive.
+type heartbeat <-chan struct{}
+
+// doneChan is a receive-only stop signal.
+type doneChan <-chan struct{}
+
 type startGoroutineFn func(
-	done <-chan struct{},
+	done doneChan,
 	pulseInterval time.Duration,
-) (heartbeat <-chan struct{})
+) heartbeat
 ```
 
 This defines a standard function signature for any goroutine that wants to be monitored. It must accept a
-termination channel (`done`) and a time interval, and return a read-only heartbeat channel.
+termination channel (`done`) and a time interval, and return a heartbeat channel.
+
+Both types are receive-only on purpose, so the contract can only ever watch them: a supervisor cannot send on a
+ward's heartbeat or close the caller's `done` channel. The goroutine that owns each channel keeps the
+bidirectional version locally — `hb` for the heartbeat, `wardDone` for the steward's own stop signal — and hands
+out only the receive side.
+
+The names also keep the two signals apart: `done` is **closed** to broadcast "stop", while a `heartbeat` is
+**sent on** once per pulse to say "alive". Because they are distinct named types, the compiler will not let one
+be passed where the other is expected.
 
 ### 2. The monitoring loop
 

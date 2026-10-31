@@ -9,16 +9,30 @@ import (
 	"time"
 )
 
+// heartbeat is the receive side of the channel a goroutine uses to prove it is
+// still alive. It is deliberately receive-only: only the goroutine that owns
+// the work may send on it, and everybody else just watches. The owner keeps the
+// bidirectional channel locally and returns it as a heartbeat.
+type heartbeat <-chan struct{}
+
+// doneChan is a receive-only stop signal. The owner closes it to broadcast
+// "stop"; consumers only ever select on it.
+type doneChan <-chan struct{}
+
 // startGoroutineFn is the contract for anything the steward can watch over:
 // it is handed a done channel to stop on and the interval at which it is
-// expected to report in, and it returns the channel it reports on.
+// expected to report in, and it returns the heartbeat channel it reports on.
+//
+// Both channels are receive-only struct{} channels, but they carry different
+// signals: done is closed to broadcast "stop", while heartbeat is sent on once
+// per pulse to say "alive".
 //
 // A goroutine that follows this contract can be wrapped in newSteward without
 // the steward knowing anything about what the work actually is.
 type startGoroutineFn func(
-	done <-chan struct{},
+	done doneChan,
 	pulseInterval time.Duration,
-) (heartbeat <-chan struct{})
+) heartbeat
 
 // logGoroutines logs who is doing what, plus a snapshot of how many goroutines
 // exist at that moment, the caller included.
@@ -30,34 +44,36 @@ func logGoroutines(who, format string, args ...any) {
 	log.Printf("%s: %s (goroutines = %d)", who, fmt.Sprintf(format, args...), runtime.NumGoroutine())
 }
 
-// newSteward wraps s in a supervisor. It starts the ward, watches the ward's
+// newSteward wraps start in a supervisor. It starts the ward, watches the ward's
 // heartbeat channel, and replaces the ward whenever the ward stops proving it
 // is alive. The returned function has the same signature as the thing it wraps,
 // so a steward is itself monitorable: stewards can be stacked.
 func newSteward(
 	timeout time.Duration,
-	s startGoroutineFn,
+	start startGoroutineFn,
 ) startGoroutineFn {
 	return func(
-		done <-chan struct{},
+		done doneChan,
 		pulseInterval time.Duration,
-	) <-chan struct{} {
-		heartbeat := make(chan struct{})
+	) heartbeat {
+		// The steward keeps the send side locally; callers only ever see the
+		// receive-only heartbeat type.
+		hb := make(chan struct{})
 
 		go func() {
-			defer close(heartbeat)
+			defer close(hb)
 
 			// The steward keeps its own done channel for the ward, so that it can
 			// kill and replace the ward without shutting itself down.
 			var (
 				wardDone      chan struct{}
-				wardHeartbeat <-chan struct{}
+				wardHeartbeat heartbeat
 			)
 			startWard := func() {
 				wardDone = make(chan struct{})
 				// Give the ward half the timeout, so it gets two chances to report
 				// in before the steward gives up on it.
-				wardHeartbeat = s(wardDone, timeout/2)
+				wardHeartbeat = start(wardDone, timeout/2)
 			}
 			killWard := func() { close(wardDone) }
 			// awaitWardStop blocks until the ward has actually stopped (a well-behaved
@@ -95,7 +111,7 @@ func newSteward(
 						// Report our own health upstream. Never block on it: whoever
 						// is watching us may have stopped listening.
 						select {
-						case heartbeat <- struct{}{}:
+						case hb <- struct{}{}:
 						default:
 						}
 					case _, ok := <-wardHeartbeat:
@@ -129,8 +145,7 @@ func newSteward(
 				}
 			}
 		}()
-
-		return heartbeat
+		return hb
 	}
 }
 
@@ -158,15 +173,15 @@ func main() {
 	var wardID atomic.Int64
 
 	doWorkFn := func(
-		done <-chan struct{},
+		done doneChan,
 		pulseInterval time.Duration,
-	) <-chan struct{} {
+	) heartbeat {
 		id := wardID.Add(1)
 		log.Printf("ward #%d: starting; reporting in every %v", id, pulseInterval)
 
-		heartbeat := make(chan struct{})
+		hb := make(chan struct{})
 		go func() {
-			defer close(heartbeat)
+			defer close(hb)
 
 			report := time.NewTicker(pulseInterval)
 			defer report.Stop()
@@ -175,7 +190,7 @@ func main() {
 				// Report in. Select on done as well, so the steward can always
 				// interrupt us, even if nobody is reading heartbeats right now.
 				select {
-				case heartbeat <- struct{}{}:
+				case hb <- struct{}{}:
 					log.Printf("ward #%d: heartbeat %d", id, pulses)
 				case <-done:
 					log.Printf("ward #%d: halting", id)
@@ -203,7 +218,7 @@ func main() {
 			}
 		}()
 
-		return heartbeat
+		return hb
 	}
 
 	// Wrap the ward in a steward. The steward is a startGoroutineFn too, so from
