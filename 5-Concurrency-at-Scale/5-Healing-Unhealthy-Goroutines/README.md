@@ -10,6 +10,7 @@ This directory contains four progressively more advanced examples of the **Stewa
 | `2/` | Steward with a results channel — multiplexes liveness heartbeats and work results. |
 | `3/` | A compact, incomplete steward — minimal timeout-based healing only; not production-grade. |
 | `4/` | Stacked stewards — an outer steward heals a wedged inner steward. |
+| `5/` | Tree supervisor — an Erlang-style supervision tree with restart strategies. |
 
 ## Should example `3/` go in `1/`?
 
@@ -30,12 +31,13 @@ The short `3/` example omits the safety mechanisms that make the steward pattern
 
 ## Intended reading order
 
-`1 → 2 → 3 → 4`:
+`1 → 2 → 3 → 4 → 5`:
 
 1. **`1/`** — learn the pattern correctly (the steward watches a heartbeat-sending ward, detects crashes and deadlocks, waits for wards to stop on shutdown).
 2. **`2/`** — add an output channel so the steward also forwards work results upstream; liveness becomes "heartbeat *or* result" activity.
 3. **`3/`** — a minimal, deliberately incomplete variant that only heals via timeout. Useful for seeing how small the code *can* be, but not a model to copy.
 4. **`4/`** — stack stewards so an outer steward heals a wedged inner steward (heal the supervisor itself).
+5. **`5/`** — supervise multiple children at once in an Erlang-style tree, with restart strategies (`one_for_one`, `one_for_all`, `rest_for_all`).
 
 Each directory is a self-contained `go run .` example with its own `go.mod`.
 

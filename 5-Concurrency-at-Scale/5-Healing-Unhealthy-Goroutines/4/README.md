@@ -48,6 +48,23 @@ in-process.
 Only the first inner steward is wedged (an `atomic.Bool` makes the hook fire once), so the replacement is healthy
 and the demo ends in a recovered state.
 
+## Why stack?
+
+A single steward can heal a wedged *ward*, but it cannot heal *itself*: if the steward blocks in `select {}`, it never
+returns and never closes its heartbeat channel, so nothing below it can detect the failure. Stacking solves this by
+adding a supervisor above:
+
+- **Inner steward** watches the ward — it restarts the ward when the ward dies or hangs.
+- **Outer steward** watches the inner steward — if the inner steward wedges and goes silent, the outer steward times
+  out and restarts it.
+
+A wedged *ward* is caught by its own steward; a wedged *steward* is invisible to the ward and can only be caught by
+something above it. The stack also masks the repair from above: `main` keeps seeing a steady heartbeat from the outer
+steward throughout the outage, so inner restarts are invisible to callers.
+
+The trade-off is that stacking heals the *service*, not the *leak*: Go cannot kill a goroutine, so the wedged inner and
+its blocked ward are still running at the end. Reclaiming those requires process-level supervision.
+
 ## What happens
 
 | Time | Event |
